@@ -1,6 +1,6 @@
 # 삼국지 2 3DS 한글 패치 작업 기록
 
-마지막 갱신: 2026-09-08
+마지막 갱신: 2026-09-10
 
 ## 작업 규칙
 
@@ -11,6 +11,32 @@
 - 번역자는 제어 코드·서식·원시 바이트를 건드리지 않는다. 에이전트가 보존·복원·삽입·검증을 맡는다.
 
 ## 완료한 작업
+
+### 2026-09-10 v223-intermediate — `title_up_002.png` 단일 이미지 갱신
+
+- 필수 MD에서 최신 권위를 v222-intermediate로 확인하고, 현재 Patch 84파일이 `analysis\v222_issue199_runtime_source_fix_report.json`의 전체 manifest와 byte-exact임을 검증한 뒤 `analysis\v223_title_up_002_image_update_baseline\PatchSnapshot`에 봉인했다.
+- 사용자가 명시한 `Extracted_Image\RomFS\StartMenu\title_up\title_up_002.png` 한 장만 열었다. PNG는 RGBA 64×16, SHA-256=`10C55948D7B6AD9C23F8FA0493ACF03D6B95DECAD540EA411DDC3433D982D63B`이다. 이미지 생성·보정·리사이징은 하지 않았다.
+- 최신 v222 `RomFS\StartMenu\title_up.g1t`의 공식 v1.1 texture index 2(`0x09 RGBA8`, 64×16) payload만 표준 encoder로 교체했다. 역디코드 결과가 source PNG와 pixel-exact이고, 3-texture 구조/header와 미지정 index 0·1 payload는 v222와 byte-exact다.
+- v222 대비 실제 게임 변경 파일은 **`RomFS/StartMenu/title_up.g1t` 1개뿐**이고 최종 SHA-256=`17C8DEC766178EEB505088CE749216874F9DDBFCB6A275C91A281713A052D3C7`이다. v222의 #199 runtime-PASS `code.bin`과 나머지 83파일은 byte-exact다. builder → 독립 verifier → deterministic `--check` PASS. Citra 확인은 pending이다.
+- Rebuild·`0004000000174D00`·Dummy update·Backup·패키징은 수정하지 않았다. 권위 자료: `analysis\v223_title_up_002_image_update_targets.json`, `analysis\v223_title_up_002_image_update_report.json`, sealed baseline, `tools\build_sangokushi2_v223_title_up_002_image.py`, `tools\verify_sangokushi2_v223_title_up_002_image.py`.
+
+### 2026-09-10 v222-intermediate — Issue #199 actual `code.bin` formatter 재분석/수정
+
+- 사용자 Citra 재검수에서 v221을 적용했음에도 `조조님, 북해の원담が / 野に下ってしまいました`가 그대로 출력됐다. Patch와 Rebuild의 `msgsec05.dat` SHA가 모두 v221 `F71E8177...D147`로 일치하므로 **v221 수정이 배포되지 않은 것이 아니라, actual runtime source 판정을 잘못한 것**으로 확정했다.
+- current v221 `code.bin` 전체에서 fullwidth `野に下ってしまいました`를 검색해 정확히 2곳을 찾았다. 첫 actual 화면 route는 `0x14A030=%s님, ` + `0x14A038=%s%sの%sが\n野に下ってしまいました`; ADR은 `0x149FC8→0x14A030`, `0x149FFC→0x14A038`이다. 이 조립 구조가 제보 화면의 `조조님, 북해の원담が`와 정확히 일치한다. sibling은 `0x14FB38=%s님, ` + `0x14FB40=%sの配下%sが野に下ってしまいました`, ADR `0x14FA58/0x14FA94`다.
+- 첫 formatter의 source visible capacity는 33B다. 사용자 목표 **`%s%s의 %s(이)가\n하야했습니다`**는 28B이므로 `(이)가`를 그대로 유지하고도 5B 여유가 있다. v221에서 22B `msgsec05` span만 보고 존댓말이 불가능하다고 판단한 분석은 actual source가 틀렸기 때문에 잘못된 결론이었다. 사용자 fallback `이/가`는 필요하지 않았다.
+- sibling formatter는 `%s의 %s(이)가\n하야했습니다` 26/34B로 함께 한글화했다. 두 formatter 모두 `%s` 개수, outer `%s님, ` prefix, ARM ADR instruction, 원 C-string allocation과 직후 code/data를 보존했다. target 뒤는 allocation 안에서 NUL로 종료하고, allocation을 확장하거나 code cave/relocation은 사용하지 않았다.
+- current `code.bin`의 fullwidth `野に下ってしまいました` residue는 2→0건이다. exact v221 Patch 84파일을 `analysis\v222_issue199_runtime_source_fix_baseline\PatchSnapshot`에 봉인했으며 v221 대비 실제 게임 변경 파일은 **`ExeFS/code.bin` 1개 / 59B**뿐이다. 최종 SHA-256=`B0BBAB197068068175F5D23D8AF86934CB12540DAED1340172EDCF4E7A11F706`.
+- v221 `msgsec05.dat`는 SHA-256=`F71E81773A64F4D96623DB2E32826574A9871420ECD781A99F2BB2D6CDC7D147`로 byte-exact 보존했다. font/PNG/G1T/Scenario 및 나머지 82파일도 v221 byte-exact다. builder → 독립 verifier → deterministic `--check` → verifier PASS. 이후 사용자 Citra Nightly 2104 실화면에서 **`조조님, 북해의 원담(이)가 / 하야했습니다`가 정상 출력되는 것을 확인해 v222 #199 actual `code.bin` formatter route는 runtime PASS**로 확정했다.
+- `Sangokushi 2 Rebuild`는 규칙대로 수정하지 않았다. 검증 시 Rebuild code SHA는 여전히 v221 `F92B07D7...913B`, Patch code는 v222 `B0BBAB19...F706`으로 달라 실제 사용자 리빌드 전 상태임을 확인했다. 이미지 편집/생성은 수행하지 않았다. 권위 자료: `analysis\v222_issue199_runtime_source_fix_targets.json`, `analysis\v222_issue199_runtime_source_fix_report.json`, `tools\build_sangokushi2_v222_issue199_runtime_source_fix.py`, `tools\verify_sangokushi2_v222_issue199_runtime_source_fix.py`.
+
+### 2026-09-10 v221-intermediate — Issue #199 하야 일본어 물리 경로 및 배반 계열 점검 (actual-source 판정은 v222에서 폐기)
+
+- 필수 MD와 로컬 `Github_Issue\Issue199.html`/첨부 PNG를 확인했다. exact v220 Patch 84파일을 `analysis\v221_issue199_departure_betrayal_baseline\PatchSnapshot`에 봉인했다. `msgsec05.dat` direct 0/1은 v169부터 완전한 한글 EOF target을 가리키고 있었지만, Original 위치 `0x2E`, `0x47`의 `%sﾉ...野ﾆ下ｯﾃ...` 일본어 본문이 v220에도 byte-exact로 남아 있었다. #199 실화면은 direct readback과 달리 이 옛 물리 본문을 소비하는 우회 경로로 판정했다.
+- runtime 우회 경로의 `하야함`은 사용자가 지나치게 짧고 어색하다고 지적했고, 장소/소속 `{북해}`도 필수라고 재확인했다. 따라서 `%s`를 생략한 시도는 폐기했다. 정식 current direct의 `재야로 내려갔습니다` 완전문은 그대로 보존하고, 물리 fallback은 모든 동적 문맥을 유지하는 `0x2E=%s의<NAME1>(이)가 / 하야했다` 22/22B, `0x47=%s의 <NAME1>(이)가 / 하야했다` 23/25B로 정리했다. 원하는 존댓말 `%s의 <NAME1>(이)가 / 하야했습니다`는 27B라 첫 22B span을 5B 초과한다. 정확한 문구를 적용할 수 있는 안전안은 사용자 도안 `하야/했습/니다` 14×14 합자 3개를 fresh local-only 한자 alias에 넣어 21B로 줄이는 방식이며, 카나 영역은 사용하지 않는다. 별도의 1인자 `code.bin 0x1841C0=%s 재야로 이동`은 #199의 2인자 문장과 호출 규약이 달라 재사용하지 않았다. 인접 복귀 본문 `0x63`은 `%s / <NAME1>(이)가 복귀` 17/20B로 유지했다.
+- 사용자 후속 요청에 따라 배반 계열을 확대 감사했다. 전투 중 설득·매복 배반 `code.bin` 4개 C-string, `msgsec02` 10 direct, `msgsec05` 5 direct, 모반/반기 `msgsec08` 6 direct 등 25개 현재 경로는 이미 한글이며 일본어 잔존이 없었다. 다만 `msgsec05 direct7`의 옛 `0xE3` 물리 본문은 일본어 `埋伏武将...`가 그대로여서 `<NAME1>님,<NAME2>(이)가 / <NAME3>의 매복자였음` 32/33B로 미러링했다.
+- 처음에는 같은 충성·배반 계열의 밀담 옛 본문 `0x197`도 예방 수정했으나, 사용자가 해당 `밀담 중` 화면은 이미 정상 한글임을 확인했다. 그 지적을 반영해 최종 v221에서는 `0x197..0x1BC`를 sealed v220과 byte-exact로 복구하고 direct14도 변경하지 않았다. **정상 출력이 확인된 인접 문구는 추측만으로 물리 미러를 수정하지 않는다**는 규칙을 프로젝트 규칙에 추가했다.
+- `msgsec05.dat` 파일 크기 1231B, 22개 direct pointer/46B header, 모든 current direct target, 각 separator를 보존했다. v220 대비 실제 변경 게임 파일은 정확히 **`RomFS/Message/msgsec05.dat` 1개뿐**이며 최종 SHA-256=`F71E81773A64F4D96623DB2E32826574A9871420ECD781A99F2BB2D6CDC7D147`다. code/font/PNG/G1T/Scenario와 나머지 83파일은 v220 byte-exact다. builder → 독립 verifier → deterministic `--check` PASS, Citra 실화면 확인은 pending이다. 권위 자료는 `analysis\v221_issue199_departure_betrayal_targets.json`, `analysis\v221_issue199_departure_betrayal_report.json`, sealed baseline, `tools\build_sangokushi2_v221_issue199_departure_betrayal.py`, `tools\verify_sangokushi2_v221_issue199_departure_betrayal.py`다. Rebuild, `0004000000174D00`, Dummy update, Backup, 패키징은 수정하지 않았다.
 
 ### 2026-09-08 v220-intermediate — 수정된 `title_up_002.png` 1:1 재갱신
 
