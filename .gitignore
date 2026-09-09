@@ -1,0 +1,6 @@
+# This repository intentionally stores documentation only.
+*
+!.gitignore
+!README.md
+!docs/
+!docs/*.md
