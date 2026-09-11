@@ -1,6 +1,6 @@
 # 삼국지 2 3DS 한글 패치 작업 기록
 
-마지막 갱신: 2026-09-10
+마지막 갱신: 2026-09-11
 
 ## 작업 규칙
 
@@ -11,6 +11,35 @@
 - 번역자는 제어 코드·서식·원시 바이트를 건드리지 않는다. 에이전트가 보존·복원·삽입·검증을 맡는다.
 
 ## 완료한 작업
+
+### 2026-09-11 v232-intermediate — `title_up_002.png` 단일 이미지 갱신
+
+- 작업 전 `PROJECT_RULES.md`, `WORK_LOG.md`, `PATCH_HANDOFF.md`, `번역.md`를 확인하고 현재 `Sangokushi 2 Patch` 84파일이 v231 report manifest와 완전 일치함을 검증했다. 이 exact v231 전체 Patch를 `analysis\v232_title_up_002_image_update_baseline\PatchSnapshot`에 봉인했다.
+- 사용자 지정 `Extracted_Image\RomFS\StartMenu\title_up\title_up_002.png` 한 장만 열었다. source는 RGBA 64×16, SHA-256=`982D2F1232F77F0BC8FD094F4624A40A2582BCF6A45CA3404230BEB568962E24`다.
+- 최신 v231 `RomFS\StartMenu\title_up.g1t`의 공식 v1.1 3-texture 컨테이너를 base로 삼아 texture index 2의 4096B RGBA8 payload만 표준 encoder로 교체했다. G1T header/구조와 index 0·1 payload는 v231과 byte-exact이며 index 2 decode readback은 source PNG와 pixel-exact다.
+- v231 대비 변경 게임 파일은 **`RomFS/StartMenu/title_up.g1t` 1개뿐**, 최종 SHA-256=`75914C28A704277CFFA6215A8B4FBA7BA0D251FA0152C0E14F12CE9D301252AD`. v231 `ExeFS/code.bin`과 나머지 83파일은 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. 이미지 생성은 사용하지 않았고 Rebuild·`0004000000174D00`·Dummy update·Backup·패키징은 수정하지 않았다. Citra 실화면 확인은 pending이다. 권위 자료: `analysis\v232_title_up_002_image_update_targets.json`, `analysis\v232_title_up_002_image_update_report.json`, `tools\build_sangokushi2_v232_title_up_002_image.py`, `tools\verify_sangokushi2_v232_title_up_002_image.py`.
+
+### 2026-09-11 v231-intermediate — 금 포상 충성도 상승 공식 `/6→/4` 추가 강화
+
+- 사용자가 v230 `/6` 적용본이 실제 플레이에서 정상 동작함을 확인한 뒤 `/4`로 한 번 더 강화 요청했다. 따라서 v230은 runtime PASS로 기록하고 exact v230 Patch 84파일을 `analysis\v231_gold_reward_loyalty_boost_div4_baseline\PatchSnapshot`에 봉인했다.
+- `/4`는 v230처럼 shift만 바꾸는 방식으로는 정확히 만들 수 없으므로, 금(type0) 전용 계산의 **`0xB19C0 LSR #2→LSR #1`**과 literal **`0xB1A3C 0xAAAAAAAB→0x80000000`** 두 word만 수정했다. `0x80000000`은 high32 곱셈에서 정확히 `floor(n/2)`를 만들고 뒤 `>>1`과 결합되어 `floor(n/4)`가 된다.
+- current `code.bin` 전체를 스캔해 `0xB1A3C` literal의 PC-relative LDR xref가 **`0xB19B8` 단 1곳**임을 확인했다. 따라서 이 상수 변경은 금 포상 분기 밖의 다른 계산에 공유되지 않는다. item/book 분기 명령은 byte-exact다.
+- `n=0..65535` 전수에서 v230의 `high32(n*0xAAAAAAAB)>>2 == n//6`과 v231의 `high32(n*0x80000000)>>1 == n//4`를 모두 검증했다. 신규 공식은 **`floor(isqrt(매력×금액)/4)+상성보너스(+0..5)`**다. 현재 충성도는 여전히 delta 산식 입력이 아니며 최종값을 100으로 clamp한다.
+- v230 대비 실제 code diff는 6B: `0xB19C0`, `0xB19C1`, `0xB1A3C..0xB1A3F`. v219 아이템 포상 행동 미소모 4개 명령과 충성도 상한 100 처리도 byte-exact 보존했다.
+- v230 대비 변경 게임 파일은 **`ExeFS/code.bin` 1개뿐**, 최종 SHA-256=`226FAA2C10C94F388A2B00EE48EEC90943C4D5A23DB815E197D3E35AEA28EE76`. 비-code 83파일, PNG/G1T/font/Message/Scenario, Original/Rebuild/Backup/Dummy update/패키징은 수정하지 않았다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. v231 `/4`의 Citra 실화면 확인은 pending이다. 권위 자료: `analysis\v231_gold_reward_loyalty_boost_div4_targets.json`, `analysis\v231_gold_reward_loyalty_boost_div4_report.json`, `tools\build_sangokushi2_v231_gold_reward_loyalty_boost_div4.py`, `tools\verify_sangokushi2_v231_gold_reward_loyalty_boost_div4.py`.
+- **재사용 규칙 기록:** 이후 `/5`, `/3`, `/8` 등 다른 divisor 요청이 오더라도 “숫자만 바꾼다”고 가정하지 않는다. `0xB1960` 금(type0) 분기와 `0xB19B8→0xB1A3C` literal xref, `0xB19C0` shift를 다시 확인하고, literal 주소가 다른 루틴에 공유되지 않는지 먼저 감사한다. 목표 divisor가 shift-only로 정확히 구현 가능한지 계산하고, 아니면 magic multiplier+shift 조합을 새로 정한다. 모든 후보는 최소 `n=0..65535` 전수 검증 후 적용하고, v219 아이템 포상 행동 미소모/상성 보너스/100 clamp/item-book 경로를 회귀검사한다. 이 절차를 향후 금 포상 충성도 배율 수정의 표준으로 사용한다.
+
+### 2026-09-11 v230-intermediate — 금 포상 충성도 상승 공식 `/12→/6` 강화
+
+- 기존 v219에서 포상 후처리 함수 `0x16215C`와 포상 종류 `0=금 / 1=아이템 / 2=서적`이 이미 증명돼 있었으므로, current v229 `code.bin`에서 금(type0) 전용 충성도 delta 함수 **`0xB1960`**를 추가 역추적했다.
+- 금 분기는 `0xB1990 cmp r6,#0` → `0xB1998 beq 0xB19B0`이고, 핵심 계산은 `SMULBB(매력×금액)` → `0xEF8E4` 정수 제곱근 → `0xB1A3C=0xAAAAAAAB` magic multiplier와 `UMULL` → `0xB19C0 LSR #3`이다. 이 조합이 `floor(isqrt(매력×금액)/12)`를 정확히 만든다. 이후 `0xF04E8` 계열로 군주와 대상 무장의 상성차를 구해 `(75-상성차)/15`의 **+0..5 보너스**를 더한다. 현재 충성도는 상승량 공식에 들어가지 않고, 후단에서 현재 값에 delta를 더한 뒤 100으로 clamp한다.
+- 사용자가 `/6` 강화를 선택했으므로 magic multiplier와 `UMULL`은 그대로 두고 **`0xB19C0: 0xE1A041A0 (LSR #3) → 0xE1A04120 (LSR #2)`** 한 명령만 수정했다. 실제 byte diff는 `0xB19C0` 한 바이트 `A0→20`뿐이다.
+- 같은 `0xAAAAAAAB` high-word division에 대해 `n=0..65535`를 전수 검사하여 `>>3 == n//12`, `>>2 == n//6`이 모두 정확히 성립함을 확인했다. 따라서 신규 공식은 **`floor(isqrt(매력×금액)/6)+상성보너스`**다.
+- v219에서 사용자가 Citra로 확인한 아이템 포상 행동 미소모 로직 `0x162190=cmp sb,#1`, `0x162194=blne 0xF0B24`, `0x16219C=ldr r4,[pc,#0x108]`, `0x1621C4=mov r6,#0`는 current v230에서도 byte-exact다.
+- exact v229 Patch 84파일을 `analysis\v230_gold_reward_loyalty_boost_baseline\PatchSnapshot`에 봉인했다. v229 대비 변경 게임 파일은 **`ExeFS/code.bin` 1개뿐**이고 실제 변경은 1B다. 최종 SHA-256=`9917522DD201E0157462597673F4ED779AB0A5384AE29502484DC3454CBE529C`. 비-code 83파일, PNG/G1T/font/Message/Scenario, Original/Rebuild/Backup/Dummy update/패키징은 수정하지 않았다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. 이후 사용자가 실제 플레이에서 금 포상 `/6` 상승량이 정상 동작함을 확인했으므로 **runtime PASS**다. 권위 자료: `analysis\v230_gold_reward_loyalty_boost_targets.json`, `analysis\v230_gold_reward_loyalty_boost_report.json`, `tools\build_sangokushi2_v230_gold_reward_loyalty_boost.py`, `tools\verify_sangokushi2_v230_gold_reward_loyalty_boost.py`.
 
 ### 2026-09-10 v229-intermediate — Issue #203 신군주/신무장 설정 후속 및 주변 일본어 잔존 완료
 
