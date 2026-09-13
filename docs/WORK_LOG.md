@@ -1,6 +1,6 @@
 # 삼국지 2 3DS 한글 패치 작업 기록
 
-마지막 갱신: 2026-09-13
+마지막 갱신: 2026-09-14
 
 ## 작업 규칙
 
@@ -12,7 +12,86 @@
 
 ## 완료한 작업
 
+### 2026-09-14 v244-intermediate — `title_up_002.png` 단일 이미지 갱신
+
+- 필수 MD 네 파일에서 최신 권위를 v243으로 확정하고, 현재 `Sangokushi 2 Patch` 84파일이 `analysis\v243_issue218_219_text_fix_report.json` manifest와 완전 일치함을 확인했다. exact v243 전체 Patch를 `analysis\v244_title_up_002_image_update_baseline\PatchSnapshot`에 봉인했다.
+- 사용자 지정 `Extracted_Image\RomFS\StartMenu\title_up\title_up_002.png` 한 장만 열었다. source는 RGBA 64×16, SHA-256=`9482E70D0B33AF8393B8D1F529193F32731D54BC53D5FC1B9D6635808619B078`다.
+- 최신 v243 `title_up.g1t`의 공식 v1.1 3-texture 구조를 base로 texture index 2의 4096B RGBA8 payload만 표준 encoder로 교체했다. G1T header/구조와 index 0·1 payload는 v243과 byte-exact이고 index 2 decode readback은 source PNG와 pixel-exact다.
+- v243 대비 변경 게임 파일은 **`RomFS/StartMenu/title_up.g1t` 1개뿐**, 최종 SHA-256=`59BCD30A51F760633F34AE22F70C5AAB4D484220FE40C47B8F36C23772F545D5`. v243 code/font/Message와 나머지 83파일은 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. 이미지 생성은 사용하지 않았고 Rebuild·`0004000000174D00`·Dummy update·Backup·패키징은 수정하지 않았다. Citra 실화면 확인은 pending이다. 권위 자료: `analysis\v244_title_up_002_image_update_targets.json`, `analysis\v244_title_up_002_image_update_report.json`, `tools\build_sangokushi2_v244_title_up_002_image.py`, `tools\verify_sangokushi2_v244_title_up_002_image.py`.
+
+### 2026-09-14 v243-intermediate — Issue #218/#219 징병 상단 안내 + 시혜 결과 띄어쓰기
+
+- 로컬 `Github_Issue\Issue218.html`, `Issue219.html`과 각 첨부 PNG를 current v242 Patch와 직접 대조했다. 이미지는 runtime 증거로만 사용했고 PNG/G1T는 수정하지 않았다. exact v242 Patch 84파일을 `analysis\v243_issue218_219_text_fix_baseline\PatchSnapshot`에 봉인했다.
+- **#218 actual owner:** 첨부 화면의 일본어는 정확히 `これ以上同時に選択できません`이며 immutable Original/current 양쪽에서 `RomFS\Message\msgsec17.dat 0x2F..0x43`의 **21B physical span**과 일치했다. 번역 DB `msgsec17_0002`에는 이미 `더 이상 동시에 선택할 수 없습니다`가 있었지만 current runtime body에는 materialize되지 않았다. 정식 번역은 current map에서 33B라 21B span을 넘으므로 의미를 유지한 **`더 선택할 수 없습니다`**를 21/21B exact-fit 적용했다. current msgsec17 header `[4,71,23,40]`, `0x44..0x46=05 05 05`, v91에서 append된 별도 확인문 `0x47..`, 파일 크기 92B는 모두 보존했다.
+- **#218 review 누락 원인:** v141 live-popup sweep은 질문/확인 패턴(`？`, `ｼﾏｽｶ`, `ﾃﾞｽｶ`, `ﾖﾛｼｲ` 등) 중심의 direct-owned 후보를 처리했기 때문에 비질문형 상단 제한 안내인 #218은 범위 밖이었다. 또한 `common_dialogue_review_v180`의 current-binary 범위도 `msgsec04/06/07/08 + proven msgsec09`까지만 포함해 `msgsec17` 자체가 빠져 있었다. 같은 인접 active direct `word[3] BYTE=0x28`의 `%s軍`도 4B exact-fit **`%s군`**으로 함께 정리했다. v243부터 msgsec17의 proven runtime 4행(absolute-BYTE direct 3 + #218 screenshot-proven physical 1)을 추가했고 #218은 stable ID **`M17-P003`**, 인접 sibling은 **`M17-D003`**으로 노출한다. 기존 stable ID는 재번호화하지 않는다.
+- **#219 actual owner:** current `msgsec07.dat`에서 bad string `효과가 없었 습니다`는 `header[179] BYTE=0x1A28`, 18B active block이다. 같은 의미의 `header[175] BYTE=0x19AA`는 이미 **`효과가 없었습니다`**로 정상이라 sibling을 권위로 교차확인했다. `0x1A28`만 정상 문구 17B + tail padding 1B로 교체하고 388-word header, header[179]/[175], `0x1A3A` separator와 파일 크기 60406B를 보존했다. common review에서는 각각 `M07-B135` / `M07-B131`로 확인된다.
+- v242 대비 변경 게임 파일은 정확히 **`RomFS/Message/msgsec07.dat`, `RomFS/Message/msgsec17.dat` 2개**뿐이다. SHA-256은 `msgsec07=301BCFBDF99944FB79486C07DAF805EDA561CC58112B4EB3AA9ADB734F4573C6`, `msgsec17=6A11A710DA1FB2017494FF3EBCB775E85AAB4EB68D76409044494E71BBF326D3`. `ExeFS/code.bin=4735E5D55B412DEFB685B3DE1CA75C1EE073FF7FDA506B6B945B63C673033382`, `font.g1t=B84FFAAD2337FE9968347755B059BD90699C8FB675FCEF0C8BC7DC3377D3D3F0`, `title_up.g1t=4A216AA795469686931B6317C58A26DCEC3E2C81E3D37C2BA703DBAC117E7063`는 v242와 byte-exact다.
+- builder → 독립 v243 verifier → deterministic `--check` → common review verifier가 모두 PASS했다. `common_dialogue_review_v180` live authority를 v243까지 확장했고 row 수는 **2280행(code441 / formal957 / current binary882)**이다. #218/#219 Citra 실화면 재확인은 pending이다. Original/Rebuild/`0004000000174D00`/Dummy update/Backup/패키징/PNG/G1T는 수정하지 않았다. 권위 자료: `analysis\v243_issue218_219_text_fix_targets.json`, `analysis\v243_issue218_219_text_fix_report.json`, `tools\build_sangokushi2_v243_issue218_219_text_fix.py`, `tools\verify_sangokushi2_v243_issue218_219_text_fix.py`.
+
+### 2026-09-14 v242-intermediate — Issue #216 우길 대사 14B exact-fit 개선
+
+- exact v241 Patch 84파일을 `analysis\v242_issue216_ugil_wording_baseline\PatchSnapshot`에 봉인하고, #216 우길 방문 대사의 embedded owner suffix `code.bin 0x15B6D4`만 수정했다. 기존 ` 소유 중이다`는 12B, 사용자 새 1안 **` 손에 있소이다`**는 현재 effective map에서 정확히 **14B**라 14B fixed allocation에 exact-fit한다.
+- 기존 12B C-string 뒤의 NUL + 같은 allocation zero slack 2B를 확인한 뒤 target 14B를 쓰고 NUL을 새 끝 `0x15B6E2`로 이동했다. pointer relocation, code size 변경, 신규 glyph는 없다. 기대 조립은 **`유명한 <ITEM>, / <PERSON> 손에 있소이다`**다.
+- v241 대비 실제 game diff는 **`ExeFS/code.bin` 1개뿐**이며 SHA-256=`4735E5D55B412DEFB685B3DE1CA75C1EE073FF7FDA506B6B945B63C673033382`. v241의 `msgsec09.dat`(#217), v240 `title_up.g1t`, font/다른 Message/Scenario/이미지는 byte-exact 보존했다.
+- builder → 독립 verifier → deterministic `--check` PASS. `common_dialogue_review_v180` authority를 v242까지 확장했고 C438/C439/C440 중 **C440=` 손에 있소이다`, 14/14B, 여유 0B**로 readback되며 common verifier도 2276행 PASS다. Citra 실화면 확인은 pending이다. Original/Rebuild/`0004000000174D00`/Dummy update/Backup/패키징/PNG/G1T는 수정하지 않았다. 권위 자료: `analysis\v242_issue216_ugil_wording_targets.json`, `analysis\v242_issue216_ugil_wording_report.json`, `tools\build_sangokushi2_v242_issue216_ugil_wording.py`, `tools\verify_sangokushi2_v242_issue216_ugil_wording.py`.
+
+### 2026-09-14 v241-intermediate — Issue #215/#216/#217 공통 대사 개선 + 누락 review 보완
+
+- exact v240 Patch 84파일을 `analysis\v241_issue215_217_text_cleanup_baseline\PatchSnapshot`에 봉인하고 작업했다. 실제 게임 파일 변경은 `ExeFS/code.bin`, `RomFS/Message/msgsec09.dat` 2개뿐이며 v240 `title_up.g1t`와 font/다른 Message/Scenario/이미지는 byte-exact로 보존했다.
+- #215 actual owner는 common review `C232`, historical `code.bin 0x1D1068` / official-v1.1 current `0x1D1078`, capacity 21B다. 기존 `로 함께\n쳐들어가` 16B를 **`에 함께\n쳐들어가 `** 17B로 교체해 별도 shared suffix `주십시오`와 조립 시 **`<대상>에 함께 / 쳐들어가 주십시오`**가 되도록 했다. prefix pointer `0x1E51A0→0x2D1078`, suffix pointer `0x1E5030→0x2D0978`과 suffix 본문은 byte-exact 보존했다.
+- #216 우길 방문 대사는 v123에서 처리된 **embedded literal 3조각 조립형**이라 기존 `common_dialogue_review_v180` 수집 범위에서 누락돼 있었다. current source는 `0x15B6C4=유명한 `, `0x15B6D0=,\n`, `0x15B6D4= 소유 중이다`이며 각각 고정 capacity 10/3/14B다. 사용자 1안 `(이)가 갖고 있다`는 16B, 2안 `이/가 갖고 있다`는 15B라 14B suffix slot을 각각 2B/1B 초과하고, `갖`도 current effective runtime map에 없어 **게임 바이트는 유지**했다. 대신 stable 기존 Cxxx ID를 건드리지 않고 **C438/C439/C440**으로 common review에 후첨하여 현재 바이트/용량을 직접 확인할 수 있게 했다.
+- #217 actual owner는 `RomFS/Message/msgsec09.dat` **M09-D030 / word[31] BYTE=`0x0398`**, 25B fixed span이다. `<NAME1>=02 01 C8`를 그대로 보존하면서 기존 `<NAME1>일족 / 역사에서 사라짐`을 **`<NAME1> 일족 / 자취를 감추다`** 22B + padding 3B로 교체했다. 88-word mixed header, word[31] pointer, `05 05 05` separator topology와 파일 크기는 보존했다.
+- v240 대비 game diff는 정확히 `ExeFS/code.bin`, `RomFS/Message/msgsec09.dat` 2개다. SHA-256=`code 2D1583EDE8A10A45A84EA5E492D47D2C201408D84B4396F4459B742233802344`, `msg09 8D9D58FCF426E713E4C722BD63CF734EB8C87ACE9D5E53A616262D1E6844A5DD`. v240 `title_up.g1t` SHA-256=`4A216AA795469686931B6317C58A26DCEC3E2C81E3D37C2BA703DBAC117E7063`도 그대로다.
+- builder → 독립 verifier → deterministic `--check`가 모두 PASS했다. `open_common_dialogue_review_v180.bat` 계열도 v241 manifest를 인식하도록 갱신했고 common review는 **2276행(code 441 / formal 957 / current binary 878)** verifier PASS다. #215/#217 Citra 실화면 확인은 pending이며 #216은 의도적으로 게임 문구를 변경하지 않았다. Original/Rebuild/`0004000000174D00`/Dummy update/Backup/패키징/PNG/G1T는 수정하지 않았다. 권위 자료는 `analysis\v241_issue215_217_text_cleanup_targets.json`, `analysis\v241_issue215_217_text_cleanup_report.json`, `tools\build_sangokushi2_v241_issue215_217_text_cleanup.py`, `tools\verify_sangokushi2_v241_issue215_217_text_cleanup.py`다.
+
+### 2026-09-13 v240-intermediate — `title_up_002.png` 단일 이미지 갱신
+
+- 필수 MD 네 파일에서 최신 권위를 v239로 확정하고, 현재 `Sangokushi 2 Patch` 84파일이 `analysis\v239_issue209_214_xiandi_envoy_report.json` manifest와 완전 일치함을 확인했다. exact v239 전체 Patch를 `analysis\v240_title_up_002_image_update_baseline\PatchSnapshot`에 봉인했다.
+- 사용자 지정 `Extracted_Image\RomFS\StartMenu\title_up\title_up_002.png` 한 장만 열었다. source는 RGBA 64×16, SHA-256=`F52C200F10E690A498DE215EB34B6FA4557FB604F66A35B89997AC522FF27877`다.
+- 최신 v239 `title_up.g1t`의 공식 v1.1 3-texture 구조를 base로 texture index 2의 4096B RGBA8 payload만 표준 encoder로 교체했다. G1T header/구조와 index 0·1 payload는 v239와 byte-exact이고 index 2 decode readback은 source PNG와 pixel-exact다.
+- v239 대비 변경 게임 파일은 **`RomFS/StartMenu/title_up.g1t` 1개뿐**, 최종 SHA-256=`4A216AA795469686931B6317C58A26DCEC3E2C81E3D37C2BA703DBAC117E7063`. v239 code/font/Message와 나머지 83파일은 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. 이미지 생성은 사용하지 않았고 Rebuild·`0004000000174D00`·Dummy update·Backup·패키징은 수정하지 않았다. Citra 실화면 확인은 pending이다. 권위 자료: `analysis\v240_title_up_002_image_update_targets.json`, `analysis\v240_title_up_002_image_update_report.json`, `tools\build_sangokushi2_v240_title_up_002_image.py`, `tools\verify_sangokushi2_v240_title_up_002_image.py`.
+- 후속으로 `Extracted_Text\open_common_dialogue_review_v180.bat`의 live authority를 **v240까지 확장**했다. generator의 sealed-manifest resolver에 `v240_title_up_002_image_update_report.json`을 추가하고 post-v192 relocation authority도 v240까지 확장했으며, server/launcher 표기도 v240으로 갱신했다. read-only generator summary와 독립 common verifier에서 **current=v240-intermediate / 84파일 / 2273행(code438, formal957, binary878) PASS**를 확인했다. 이 검수도구 갱신은 `Sangokushi 2 Patch` 게임 파일을 수정하지 않는다.
+
+### 2026-09-13 v239-intermediate — Issue #209 / #214 헌제 밀사 대사 개선
+
+- exact v238 Patch 84파일을 `analysis\v239_issue209_214_xiandi_envoy_baseline\PatchSnapshot`에 봉인했다. 변경 범위는 `ExeFS/code.bin`과 `RomFS/Message/msgsec08.dat`의 증명된 live/물리 중복 span으로 한정했다.
+- #209 C437 actual runtime은 `역적` prefix + 동적 `<NAME1>` + C064 suffix 조립이다. 사용자 제안의 suffix 바이트를 실제 current map으로 계산하면 1안 33B, 2안 31B, 3안 26B이며 C064 visible capacity는 29B라 **3안만 안전**하다. 또한 과거 v211에서 `역적 ` 5B를 기존 copy5 helper `0xF55B4`로 복사해 NUL이 빠지며 stale buffer가 노출된 실패 이력이 있으므로, v239는 호출 `0x1671E4`만 ABI가 동일한 기존 **copy6 helper `0xF2370`**로 바꿔 `역적 ` 5B+NUL 1B를 안전하게 복사한다. prefix `0x167414=역적 `, suffix `0x167420=을/를 토벌해\n짐을 구해다오`로 결과는 **`역적 <NAME1>을/를 토벌해 / 짐을 구해다오`**다.
+- `M08-B112`는 42B 물리 block이지만 current 128-word msgsec08 header가 직접 참조하지 않는 sibling이다. 사용자가 C437과 동일 표기를 요청했으므로 같은 3안 34B+pad8로 동기화했으나 runtime owner로 간주하지 않는다.
+- #214 actual owner는 C066 `code.bin 0x167488`, capacity 37B다. 기존 `%s%s황제에게서\n%s(으)로 밀사 도착` 33B를 **`%s%s 황제로부터\n%s에게 밀사 도착`** 32B로 fixed-slot 교체했다. format `%s` 3개와 주변 code/data는 보존한다.
+- v238 대비 game diff는 정확히 `ExeFS/code.bin`, `RomFS/Message/msgsec08.dat` 2개다. SHA-256=`code 3F94AC73EA5373CACA5EDAF09265FEF24066DD59DF02D0A6B6C15FE069957979`, `msg08 270B88AA3663CA188DA7561D9D5C73ACB1FC38FFED003058625980344785C6C7`. 나머지 82파일은 v238 byte-exact다. builder→독립 verifier→deterministic `--check` PASS. 이후 사용자 Citra Nightly 2104 실화면에서 #214 **`허창 황제로부터 / 장오에게 밀사 도착`**, #209 **`역적 조조을/를 토벌해 / 짐을 구해다오`**가 정상 출력되는 것을 확인했으므로 v239 #209/#214는 Citra runtime PASS다.
+- common review authority/post-v192 relocation을 v239까지 확장했다. common verifier PASS, read-only build에서 common 2273 / battle 520 / Xiandi 39행(flagged 13)을 유지하며 C437/C064/C066/M08-B112가 새 문구로 읽힌다. M08-B112 변경으로 formal-byte-identical 통계는 552, changed/repacked는 405가 됐다. Xiandi verifier의 v239 기대값도 갱신했으며 실제 HTML/report는 다음 launcher 실행 시 재생성된다. Original/Rebuild/`0004000000174D00`/Dummy update/Backup/패키징/이미지는 수정하지 않았다.
+
+### 2026-09-13 v238-intermediate — Issue #211 자연재해 텍스트 점검
+
+- exact v237 Patch 84파일을 `analysis\v238_issue211_disaster_spread_baseline\PatchSnapshot`에 봉인했다. 자연재해 단일/복수 발생 경로를 함께 감사했다.
+- #211 actual owner는 `ExeFS/code.bin 0x15EB88`이다. 기존에는 `疫病` 문자열을 가리켜 `疫病 피해가 확산 중입니다`가 되며, 이를 기존 한글 `역병` pool `0x2CFB1C`로 pointer-only redirect했다. 기대 runtime은 **`역병 피해가 확산 중입니다`**다.
+- 메뚜기 떼의 복수 피해 경로 `0x15EB84→메뚜기 떼`는 v210 수정이 그대로 정상이다. 홍수 `0x15F074`, 태풍 `0x15F244`의 실제 formatter도 이미 한글이며, header-referenced `msgsec08` 복수 지역 자연재해 대사에서도 일본어 residue는 없었다. `msgsec14.dat`에 남은 `台風/洪水/疫病`은 header가 참조하지 않는 물리 잔재라 수정하지 않았다.
+- v237 대비 game diff는 `ExeFS/code.bin` 1개뿐이고 SHA-256=`F5E9D709568F2DFA2808A097CA92429EAE5E89C5ACDD96C11D3C13AF0E7A5E0D`. 나머지 83파일은 v237 byte-exact다. builder/독립 verifier/deterministic check PASS, Citra 확인은 pending이다.
+
+### 2026-09-13 v237-intermediate — Issue #212 / #213 문장·띄어쓰기 개선
+
+- 로컬 `Github_Issue\Issue212.html`, `Issue213.html`을 current v236과 대조하고 exact v236 Patch 84파일을 `analysis\v237_issue212_213_text_cleanup_baseline\PatchSnapshot`에 봉인했다. 변경 범위는 `ExeFS/code.bin`, `RomFS/Message/msgsec07.dat`의 증명된 live span 2곳뿐이다.
+- #212 actual owner는 공식 v1.1 이후 `code.bin 0x157538`(historical `0x157228`)의 공통 요격 formatter `%s, %s에 / 요격한 듯 합니다`다. current Patch 전체 raw audit에서 exact `듯 합니다`는 이 1곳뿐이며, **`%s, %s에 / 요격한 듯합니다`**로 25B→24B fixed C-string 수정했다. 29B visible capacity와 terminator/주변 code-data는 보존한다.
+- #213 actual owner는 `msgsec07.dat` **header[151] BYTE=`0x168C`**다. runtime은 `우리 나라의 힘이 될 자가 / 재야에 있어` 36B 뒤에 다음 legacy fragment `있을 것입니다` 13B를 separator 없이 바로 이어 읽어 `있어있을 것입니다`를 만들고 있었다. `0x168C..0x16BC` 49B 전체를 **`우리나라에 힘이 될 자가 / 재야에 있을 것입니다`** 44B + tail padding 5B로 교체해 `우리 나라→우리나라`, `의→에`, `있어+있을` 중복을 동시에 정리했다. 388-word header, header[151], `0x16BD` separator, 파일 크기는 보존한다. 다른 `우리 나라` 문구는 문맥이 별개라 예방 수정하지 않았다.
+- v236 대비 game diff는 정확히 `ExeFS/code.bin`, `RomFS/Message/msgsec07.dat` 2개다. SHA-256=`code 6B6E13A14CAB8D2FA26E8AE37462F0D11379CFE70EFE2CE205A470E105A1AEF7`, `msg07 91558824F55D5353B0541BC4574E2A1F3D7E56715B55FED26B82E074A7D9C03E`; 나머지 82파일과 v235 `title_up.g1t`, font/모든 이미지는 byte-exact다. builder→독립 verifier→deterministic `--check` PASS, Citra 확인은 pending이다.
+- common review resolver와 post-v192 code relocation authority를 v237까지 확장했다. read-only in-memory review에서 common **2273행**, battle **520행**, Xiandi **39행/flagged 13행**을 유지하며 `C021=0x157228→0x157538 / %s, %s에 / 요격한 듯합니다`, `M07-B114=0x168C / 우리나라에 힘이 될 자가 / 재야에 있을 것입니다`를 정확히 읽는다. common verifier에 두 회귀 assert를 추가했고 launcher 지원 주석도 v237로 갱신했다. Original/Rebuild/`0004000000174D00`/Dummy update/Backup/패키징/PNG/G1T는 수정하지 않았다. 권위 자료는 `analysis\v237_issue212_213_text_cleanup_targets.json`, `analysis\v237_issue212_213_text_cleanup_report.json`, `tools\build_sangokushi2_v237_issue212_213_text_cleanup.py`, `tools\verify_sangokushi2_v237_issue212_213_text_cleanup.py`다.
+
+### 2026-09-13 v236-intermediate — Issue #208 / #210 띄어쓰기 통일
+
+- 로컬 `Github_Issue\Issue208.html`, `Issue210.html`을 current v235와 대조했다. exact v235 Patch 84파일을 `analysis\v236_issue208_210_spacing_baseline\PatchSnapshot`에 봉인하고, 수정 범위는 `ExeFS/code.bin`과 `RomFS/Message/msgsec06.dat` 두 파일의 증명된 live span으로 한정했다.
+- #208은 사용자 지정 규칙대로 동적 **세력명 + 군** 호칭을 `조조군/원소군/유비군`처럼 붙여쓰기로 통일했다. 공식 v1.1 병합 이후 live owner는 `code.bin 0x157BAC=%s%s 군이 %s%s`, `0x157E30=%s%s 군이\n%s%s` 두 공통 침공 formatter이며 각각 **`%s%s군이 %s%s`**, **`%s%s군이\n%s%s`**로 fixed C-string slot 안에서 1B 공백만 제거했다. Patch 전체 raw audit에서 동적 이름 token 뒤 ` 군` 패턴은 0건이고, 동일 `%s%s 군` class도 이 두 곳 외에는 없었다. 이미 정상인 `<NAME1>군이 배신했습니다!`, HEX `%s군`은 byte-exact 보존했고 `%s 군주`는 `군주`라는 별도 단어라 범위에서 제외했다.
+- #210 actual owner는 `RomFS/Message/msgsec06.dat` **header[35] BYTE pointer `0x546`**, 20B fixed span이다. `도시가 번영 하겠군요`를 **`도시가 번영하겠군요`** 19B + tail padding 1B로 바꿨다. msgsec06 161-word header, header[35] pointer, 모든 `05 05 05` separator 위치와 파일 크기 6912B는 그대로다.
+- v235 대비 실제 game diff는 정확히 **`ExeFS/code.bin`, `RomFS/Message/msgsec06.dat` 2개**다. 최종 SHA-256=`code D131D1E0511E2313E924BEAA0C8331B6ACB837298929363B6B29D95A567B486E`, `msgsec06 B87A232E88CB2F5FC4B8B8CDEE8879580113FCFF7D744CD5DF2F0CCB5EB8CB21`. v235 `title_up.g1t`를 포함한 나머지 82파일과 모든 이미지/font/다른 Message는 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행이 모두 PASS했고 Patch는 84파일이다. Citra 실화면 확인은 pending이다. Original/Rebuild/`0004000000174D00`/Dummy update/Backup/패키징/PNG/G1T는 수정하지 않았다. 권위 자료: `analysis\v236_issue208_210_spacing_targets.json`, `analysis\v236_issue208_210_spacing_report.json`, `tools\build_sangokushi2_v236_issue208_210_spacing.py`, `tools\verify_sangokushi2_v236_issue208_210_spacing.py`.
+- review authority도 v236을 인식하도록 `generate_sangokushi2_common_dialogue_review_v180.py`의 sealed-manifest resolver와 post-v192 code relocation hash 목록을 확장했다. 이 누락을 고친 뒤 read-only in-memory build에서 **2273행**이 유지되고 `C026=0x15789C→0x157BAC / %s%s군이 %s%s`, `C027=0x157B20→0x157E30 / %s%s군이\n%s%s`, `M06-B030=0x546 / 도시가 번영하겠군요`가 정확히 읽힌다. common verifier에도 세 target의 회귀 assert를 추가했고 `open_common_dialogue_review_v180.bat` 지원 주석을 v236으로 갱신했다. Xiandi/battle review는 이 공통 resolver를 재사용하므로 다음 launcher 실행 시 exact v236을 기준으로 재생성된다.
+
 ### 2026-09-13 v235-intermediate — `title_up_002.png` 단일 이미지 갱신
+
+- 검수 도구 보완: `xiandi_dialogue_review.html`이 기존에는 화자/문맥만 표시하고 byte 정보는 버리던 문제를 수정했다. current v235 기준 39행 모두 `current_bytes`를 표시하고, 38행은 검증된 `capacity/remaining`까지 표시한다. `C437`은 `역적` prefix + 동적 `<NAME1>` + C064 suffix의 분할 조립 경로라 단일 capacity를 임의 추정하지 않고 별도 안내한다. `open_xiandi_dialogue_review.bat` 실행 시 generator/verifier가 이를 재생성하며 verifier PASS. 게임 Patch 파일은 변경하지 않았다.
+
+- 후속으로 `open_common_dialogue_review_v180.bat`와 `open_xiandi_dialogue_review.bat`가 현재 v235 exact Patch를 읽도록 review authority를 갱신했다. common review resolver에 `analysis\v235_title_up_002_image_update_report.json`을 추가하고 지원 범위를 v235까지 확장했으며, common verifier는 live v235에서 **2273행** PASS했다. Xiandi BAT 자체는 원래 revision 동적 해석 구조였지만 generator/verifier 내부에 `v216-intermediate` 고정 gate가 남아 있어 v235에서 실패하던 것을 발견했다. 이를 exact-current-manifest + v216 이상 구조 검증으로 바꿔 `xiandi_dialogue_review.html`을 v235 기준으로 재생성했고 **39행 / flagged 13행** verifier PASS했다. 이 review-tool 갱신은 게임 Patch 파일을 수정하지 않는다.
 
 - 필수 MD 네 파일을 확인해 실제 최신 권위가 v234임을 확정하고, 현재 `Sangokushi 2 Patch` 84파일이 `analysis\v234_issue205_207_text_spacing_report.json` manifest와 완전 일치함을 검증했다. exact v234 전체 Patch를 `analysis\v235_title_up_002_image_update_baseline\PatchSnapshot`에 봉인했다.
 - 사용자 지정 `Extracted_Image\RomFS\StartMenu\title_up\title_up_002.png` 한 장만 열었다. source는 RGBA 64×16, SHA-256=`9BF8D3B821B15BFE627F5B3655AA75764C25426BC23E1C18A19892A278B22374`다.
