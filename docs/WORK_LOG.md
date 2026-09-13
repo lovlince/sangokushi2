@@ -1,6 +1,6 @@
 # 삼국지 2 3DS 한글 패치 작업 기록
 
-마지막 갱신: 2026-09-11
+마지막 갱신: 2026-09-13
 
 ## 작업 규칙
 
@@ -11,6 +11,37 @@
 - 번역자는 제어 코드·서식·원시 바이트를 건드리지 않는다. 에이전트가 보존·복원·삽입·검증을 맡는다.
 
 ## 완료한 작업
+
+### 2026-09-13 v235-intermediate — `title_up_002.png` 단일 이미지 갱신
+
+- 필수 MD 네 파일을 확인해 실제 최신 권위가 v234임을 확정하고, 현재 `Sangokushi 2 Patch` 84파일이 `analysis\v234_issue205_207_text_spacing_report.json` manifest와 완전 일치함을 검증했다. exact v234 전체 Patch를 `analysis\v235_title_up_002_image_update_baseline\PatchSnapshot`에 봉인했다.
+- 사용자 지정 `Extracted_Image\RomFS\StartMenu\title_up\title_up_002.png` 한 장만 열었다. source는 RGBA 64×16, SHA-256=`9BF8D3B821B15BFE627F5B3655AA75764C25426BC23E1C18A19892A278B22374`다.
+- 최신 v234 `title_up.g1t`의 공식 v1.1 3-texture 구조를 base로 texture index 2의 4096B RGBA8 payload만 표준 encoder로 교체했다. G1T header/구조와 index 0·1 payload는 v234와 byte-exact이고 index 2 decode readback은 source PNG와 pixel-exact다.
+- v234 대비 변경 게임 파일은 **`RomFS/StartMenu/title_up.g1t` 1개뿐**, 최종 SHA-256=`D82BED0C792ACD5F9372051B1DDDF0D1A8880986F6BB5A041FD4664E199DB791`. v234 code/font/Message와 나머지 83파일은 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. 이미지 생성은 사용하지 않았고 Rebuild·`0004000000174D00`·Dummy update·Backup·패키징은 수정하지 않았다. Citra 실화면 확인은 pending이다. 권위 자료: `analysis\v235_title_up_002_image_update_targets.json`, `analysis\v235_title_up_002_image_update_report.json`, `tools\build_sangokushi2_v235_title_up_002_image.py`, `tools\verify_sangokushi2_v235_title_up_002_image.py`.
+
+### 2026-09-13 v234-intermediate — Issue #205 군주 사망 대사 + #207 띄어쓰기/줄바꿈 정리
+
+- 로컬 `Github_Issue\Issue205.html`, `Issue207.html`을 current v233과 대조했다. 작업 전 exact v233 Patch 84파일을 `analysis\v234_issue205_207_text_spacing_baseline\PatchSnapshot`에 봉인했다. 이번 revision은 Message 문자열만 수정하며 `code.bin`/font/G1T/PNG는 건드리지 않는다.
+- #205 actual runtime owner는 **`RomFS/Message/msgsec09.dat` mixed direct 29 / header word[30] BYTE = `0x0379`**다. span은 정확히 **28B**였고 current `이儻난 <NAME1> / 여기서 죽었다...`의 `儻`은 과거 위험 alias **`름=0x9957`**가 남은 결과였다. 사용자 확정 문구 **`이름 떨친 <NAME1> / 여기서 죽다...`**를 적용했으며 target이 **28/28B exact-fit**이다. 새 glyph는 필요 없고 현재 안전 alias `름=966C`, `떨=94B3`, `친=975F`, `죽=8CBC`를 사용한다. `<NAME1>=02 01 C8`, LF, 말줄임 `...`도 그대로 보존했다.
+- #205가 `common_dialogue_review_v180`에서 빠진 원인도 확인했다. 기존 common review의 Message current-binary 범위가 `msgsec04/06/07/08`만 포함했고, `msgsec09`는 첫 88 word가 일반 count+pointers가 아닌 **mixed header**라 전용 parser가 있는 battle review에만 들어가 있었다. battle review에서 이미 증명된 runtime geometry를 common review에 이식하여 **M09-D000~D030 + M09-P026, 총 32행**을 추가했다. stable ID는 v180 그대로이며 common review는 **2241→2273행**으로 확장됐다. `open_common_dialogue_review_v180.bat`/generator/server/verifier 모두 v234 authority를 읽도록 갱신했다.
+- #205 주변 군주 사망/계승 sibling도 함께 감사했다. `M09-D027=<NAME1> 후계자 선택`, `D028=<NAME1> 뜻을 이어/군주가 되었다`, `D030=<NAME1>일족/역사에서 사라짐`은 한자/일본어 잔존 없이 정상이고, v234 후 `D029`도 residue 0이다. 따라서 이 묶음에서 추가 한자 혼입은 확인되지 않았다.
+- #207은 네 화면의 실제 live span을 확인해 모두 in-place로 처리했다. `msgsec04 0x031E` 40B의 **`함정 을→함정을`**은 target 39B + tail padding 1B, `msgsec07 0x1485` 39B의 **`성과 는→성과는`**은 target 38B + padding 1B, `msgsec07 0x2E5A` 32B의 **`모양 입니다→모양입니다`**는 target 31B + padding 1B다. 모두 fragment 사이에 남은 1B padding space를 제거한 것이며 header pointer와 `05 05 05` 경계는 유지한다.
+- #207 얼굴 대화 `msgsec02 direct21`, current pointer **`0x10E7`**, 55B는 문구 자체를 늘리지 않고 `건` 뒤의 space 1B를 LF 1B로 바꿔 **`대장에게 필요한 건 / 무력이 아니라 / 사람을 움직이는 힘이다`**의 명시 3줄로 정리했다. 55/55B 그대로이고 기존 `아니라` 뒤 LF도 유지되어 자동 줄바꿈+명시 줄바꿈 충돌을 피한다.
+- v233 대비 변경 게임 파일은 정확히 **4개**: `RomFS/Message/msgsec02.dat`, `msgsec04.dat`, `msgsec07.dat`, `msgsec09.dat`. SHA-256은 각각 `D7A99554ECCE062D95514C6E013E113FEDCB9E439641A01BC0EC244E8EAFDE41`, `15DDE3C66654FE5F65FE62CF37F3C1C78EA37FE5A62A5493A764A7F04D8D466C`, `58A5FBFA5CF2429570721D102D65FA312EEA89A26FCC5CA8FFF8CB18D8D944C1`, `B55C55C8AE5EA6C1F79FABF05D94632531B8A79EFFADFAD2E6804B372CD32692`. 나머지 80개 Patch 파일은 v233 byte-exact이며 특히 `ExeFS/code.bin`과 `RomFS/Common/Font/font.g1t`도 v233과 동일하다.
+- builder → deterministic `--check` → 독립 v234 verifier 모두 PASS. 네 Message 파일의 크기, 각 header/pointer, 모든 `05 05 05` separator 위치, target span 밖 바이트를 독립 검증했다. common review는 live v234 **2273행** verifier PASS, battle review는 live v234 **520행** verifier PASS다. #205 `M09-D029`가 제거되면서 battle review의 일본어/CJK 잔존 후보는 **7→6건**(`M12-D02`, `M03-012~015`, `C127-T0`)으로 감소했다. Citra 실화면 확인은 pending이다. Original/Rebuild/Backup/Dummy update/패키징은 수정하지 않았다. 권위 자료: `analysis\v234_issue205_207_text_spacing_targets.json`, `analysis\v234_issue205_207_text_spacing_report.json`, `tools\build_sangokushi2_v234_issue205_207_text_spacing.py`, `tools\verify_sangokushi2_v234_issue205_207_text_spacing.py`.
+
+### 2026-09-13 v233-intermediate — Issue #204 / #206 전투 정보·연합 UI 및 주변 누락 보완
+
+- 로컬 `Github_Issue\Issue204.html`, `Issue206.html`을 current v232와 대조했다. #204 제보 `아군무장/적무장`은 Message가 아니라 `code.bin`의 별도 UI C-string table owner였고, #206 `연합`도 `common_dialogue_review_v180` 범위 밖의 동일 code UI/용어 pool owner였다. exact v232 Patch 84파일은 `analysis\v233_issue204_206_ui_text_cleanup_baseline\PatchSnapshot`에 봉인했다.
+- #204 actual label은 current code `0x1CF908=敵武将`, `0x1CF910=味方무장`이고 pointer refs는 각각 `0x1DC298`, `0x1DC294`다. 이를 **`적무장 / 아군무장`**으로 same-slot 치환했다. 바로 다음 live sibling `0x1CF91C=外`도 **`외`**로 보완했다. 각 start/NUL/pointer value와 다음 C-string 경계는 그대로다.
+- #204 주변 active `msgsec10.dat` 도움말도 재감사해 direct91/92가 Original 일본어 그대로, direct96도 전투 위임 일본어 그대로임을 확인했다. fixed physical span 안에서 각각 **`아군 무장 정보. 1턴에 여러 번 확인.`**, **`주변 적 무장 정보. 지력이 높을수록 범위 증가. 실행 시 금 필요.`**, **`모두 컴퓨터에 위임.`**으로 교체했다. direct91/96의 원 `ESC K/H` 4개는 순서·개수를 보존하고 136개 pointer/header, 모든 `05 05 05` separator, 파일 크기 7237B는 byte-exact다.
+- #206 `연합`의 current owner는 `code.bin 0x1CFCF8=連合`, pointer `0x1DC5B0→VA 0x2CFCF8`다. 같은 연속 table 주변을 확장 감사해 live untranslated/mixed sibling `0x1CFCD4=米買`, `0x1CFCDC=米売`, `0x1CFCE4=廊수`(원래 홍수 계열의 혼입), `0x1CFD00=他国の戦争`도 확인했다. 사용자 지정 표기를 적용해 **`쌀삼 / 쌀팜 / 홍수 / 연합 / 타국 전쟁`**으로 정리했다. pointer refs `0x1AB41C / 0x1AB418 / 0x1DC430 / 0x1DC5B0 / 0x1AB324`와 slot 시작·NUL 경계를 보존했다.
+- `팜(U+D31C)`은 current effective font map에 없어서 신규 alias가 필요했다. v232 font donor audit에서 16개 후보를 찾고, **`0x929B / stock 兆 / physical 2428`**을 선택했다. 이 alias는 기존 한글 owner가 없고, v232 `code.bin`의 text-reference scan 0건, `RomFS/Message` 0건, `RomFS/Scenario` 0건이며 과거 alias 사용 이력도 없는 후보다. packed atlas에는 `팜`만 삽입하고 비활성 아래 이웃 physical 2501의 top guard row만 투명화했다. 변경 font cell은 정확히 **2428, 2501** 두 칸이며 readback pixel-exact다. 이미지 편집 UI/AI 생성은 사용하지 않았다.
+- 같은 pointer table에는 `名`, `読` 같은 별도 1글자 compact label도 존재하지만 #204/#206 제보 화면 owner로 증명되지 않았고 1-cell 번역 표현도 별도 설계가 필요하므로 이번에는 예방 수정하지 않았다. 반대로 실제 live pointer와 의미가 명확한 위 sibling 5개만 추가 수정했다.
+- v232 대비 변경 게임 파일은 정확히 **`ExeFS/code.bin`, `RomFS/Common/Font/font.g1t`, `RomFS/Message/msgsec10.dat` 3개**뿐이다. SHA-256은 `code.bin=B74E93AC64CE7F4F1B57209809430C5F30B194F2113F540E558FDF799135BA09`, `font.g1t=B84FFAAD2337FE9968347755B059BD90699C8FB675FCEF0C8BC7DC3377D3D3F0`, `msgsec10.dat=AD76838FB2A249B5118331262496C8E3845DFD98804E440E95040ECF1775D5A6`. 나머지 81개 Patch 파일은 v232와 byte-exact다.
+- 독립 verifier에서 8개 code target과 3개 msgsec10 target readback, code pointer ref inventory, Message header/pointer/separator, font changed-cell scope를 재검증해 PASS했다. v231 금 포상 `/4` 명령/상수와 v219 아이템 포상 행동 미소모 명령도 v232 baseline과 byte-exact다. `common_dialogue_review_v180`은 live v233 **2241행**, `battle_text_review_v180`은 live v233 **520행** verifier PASS다. 전투 review의 일본어/CJK 잔존 의심은 #204 주변 3건이 제거되어 별개 7건(`M12-D02`, `M03-012~015`, `M09-D029`, `C127-T0`)만 남는다.
+- builder → deterministic `--check` → 독립 v233 verifier → common/battle review verifier 모두 PASS. 이후 사용자 Citra 실화면에서 **`적무장 / 아군무장` 정상 출력**을 확인해 #204 핵심 두 label route는 runtime PASS로 기록한다. `연합`은 조건이 까다로워 아직 실화면 확인하지 못했으며, `쌀삼 / 쌀팜`도 등장 화면 미확인 상태라 이 세 항목은 static PASS / runtime pending으로 유지한다. Original/Rebuild/Backup/Dummy update/패키징은 수정하지 않았다. 권위 자료: `analysis\v233_issue204_206_ui_text_cleanup_targets.json`, `analysis\v233_issue204_206_ui_text_cleanup_report.json`, `analysis\v233_pam_donor_audit.json`, `tools\build_sangokushi2_v233_issue204_206_ui_text_cleanup.py`, `tools\verify_sangokushi2_v233_issue204_206_ui_text_cleanup.py`.
 
 ### 2026-09-11 v232-intermediate — `title_up_002.png` 단일 이미지 갱신
 
@@ -3084,3 +3115,8 @@
 - `common_dialogue_review_v180.html`의 Message formal 957행은 v53 historical authority라 후속 wording/alias/pointer/repack 때문에 current와 exact byte가 다를 수 있다. 기존 `(exact formal bytes 미검출)`을 오류처럼 표시하지 않고 **`v53 formal differs from current Patch` / `후속 revision에서 변경/재배치됨 — current binary view 확인`**으로 의미를 명확히 했다. 현재 통계는 byte-identical 553 / changed-or-repacked 404이며 current binary 840행은 별도 실제 바이너리 view로 유지한다.
 - exact v184 전체 Patch 83파일을 `analysis\\v185_issue177_common_review_baseline\\PatchSnapshot`에 봉인했고 실제 게임 변경은 **`ExeFS/code.bin` 1개뿐**이다. v184 대비 C250 slot 내 실제 byte diff는 4B이며 font/PNG/G1T/Message/Scenario와 나머지 82개 게임 파일, Original/Rebuild/Backup은 v184 byte-exact다.
 - builder → deterministic `--check` → stable common review verifier → v185 독립 verifier 모두 PASS했다. 최종 `code.bin SHA-256=5208F8F98240EF304CC0397ADFCE801648CB3555E225743D656DC24FB49EB465`; 최신 정적 Patch 권위는 **v185-intermediate**, Citra 실화면 재확인은 pending이다.
+
+## 2026-09-11 — 보류 메모: 군선 건조 기간·비용 절반 조정
+
+- **이번에는 실제 작업하지 않음.** 주가/몽충/투함의 건조 기간·비용을 각각 `2개월/1000 → 1개월/500`, `4개월/2000 → 2개월/1000`, `6개월/3000 → 3개월/1500`으로 조정하는 요청은 보류한다.
+- 추후 사용자가 다시 요청할 경우, **현재 Patch 기준으로 실제 비용·기간 계산 로직과 관련 표시 텍스트(개별 건조 설명 및 메뉴 상단 설명)를 추가 분석한 뒤**, 안전한 수정 위치를 확정하고 작업한다. 이번 메모만으로 상수/공식 위치를 확정하거나 패치를 적용한 것으로 간주하지 않는다.
