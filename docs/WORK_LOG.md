@@ -12,6 +12,18 @@
 
 ## 완료한 작업
 
+### 2026-09-14 v245-intermediate — M02-032 `슨` Citra 실패 alias 교체
+
+- 사용자 제보의 `battle_text_review_v180.html` M02-032 `대체 무슨 일인가 / 이래서는 움직일 수 없다`를 current v244 `msgsec02.dat`와 직접 대조했다. direct32 pointer는 `0x129B`, 40B span이며 `무슨`의 `슨`이 실제로 **`9972`**를 사용하고 있었다.
+- `9972`는 checkpoint80에서 `슨` 도트를 physical3704에 정상 작성했으나 이후 Citra에서 stock 한자형으로 출력되어 v140부터 known-failed alias다. v140에서는 live 대사에서 전부 제거됐지만 v164 전투대사 전수 작업이 old effective map을 재사용하면서 M02-032에 다시 유입된 것으로 확인했다.
+- current v244 전체 Message/Scenario에서 raw `9972` live ref를 전수 감사한 결과 M02-032 한 곳뿐이었다. `code.bin`의 raw `9972` 2건은 ARM 명령 바이트로 판정해 보존했다. 번역 DB에 `무슨`이 남아 있는 다른 항목은 현재 runtime에서 이미 다른 표현을 사용하며 live `9972`를 쓰지 않는다.
+- donor audit은 current code text ref=0, Message/Scenario ref=0, current Hangul owner=0, known-failed 제외, low-lead, stock-pixel-exact, 인접 live-neighbor bleed 안전 조건으로 재실행했다. 최종 donor는 **`95D7` / stock `勉` / physical3052**. v215/v233 report에서의 `95D7` 출현은 실제 배정이 아니라 후보 목록뿐임을 확인했다.
+- 새 글자를 다시 그리지 않고 current physical3704의 기존 `슨` 14×14 셀을 physical3052에 pixel-exact 복사했다. `勉`의 stock bleed 잔여를 없애기 위해 비활성 아래 guard physical3125의 top row만 투명화했고, 실제 font changed cells는 **3052, 3125 두 칸**뿐이다. old physical3704는 byte/pixel 그대로 보존한다.
+- M02-032은 같은 40B span에서 `9972→95D7` 두 바이트만 교체했다. direct32 pointer `0x129B`, 157-entry header, `05 05 05` separator, 파일 크기는 그대로다. 최종 runtime raw는 `...8BD7 95D7...`이며 review decode는 동일하게 `대체 무슨 일인가 / 이래서는 움직일 수 없다`다.
+- v244 대비 변경 게임 파일은 정확히 **`RomFS/Common/Font/font.g1t`, `RomFS/Message/msgsec02.dat` 2개**다. SHA-256=`font 4FAF492F93E0B46F36EA4DB7BE6C1DE041CE812CBD63751F5BFA2AB0803C9C03`, `msg02 20467714E66FC113450CC6CEC9B9DADB8306C7AB13ABA089E88164286F8A9B2E`. 나머지 82개 Patch 파일은 v244 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. `battle_text_review_v180.html`도 v245 authority로 재생성했고 **520행 verifier PASS**, M02-032 raw/current readback을 확인했다. `9972` live Message/Scenario ref=0, `95D7` live ref는 msgsec02 한 곳뿐이다. Citra 실화면 확인은 pending이다.
+- 향후 effective mapping 권위는 **`슨=95D7`**이며 `9972`는 계속 known-failed로 유지한다. 권위 자료: `analysis\v245_seun_donor_audit.json`, `analysis\v245_m02_032_seun_donor_targets.json`, `analysis\v245_m02_032_seun_donor_report.json`, `tools\build_sangokushi2_v245_m02_032_seun_donor.py`, `tools\verify_sangokushi2_v245_m02_032_seun_donor.py`.
+
 ### 2026-09-14 v244-intermediate — `title_up_002.png` 단일 이미지 갱신
 
 - 필수 MD 네 파일에서 최신 권위를 v243으로 확정하고, 현재 `Sangokushi 2 Patch` 84파일이 `analysis\v243_issue218_219_text_fix_report.json` manifest와 완전 일치함을 확인했다. exact v243 전체 Patch를 `analysis\v244_title_up_002_image_update_baseline\PatchSnapshot`에 봉인했다.
