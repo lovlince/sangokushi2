@@ -12,6 +12,75 @@
 
 ## 완료한 작업
 
+### 2026-09-14 v252-intermediate — Issue #224 매복 문구 4안 한 줄 처리
+
+- 작업 전 `analysis\v251_issue226_reinforcement_request_report.json`과 독립 verifier로 현재 `Sangokushi 2 Patch` 84파일이 **exact v251-intermediate**임을 확인했다. exact v251 전체 Patch는 `analysis\v252_issue224_ambush_one_line_baseline\PatchSnapshot`에 먼저 봉인했다.
+- #224 actual runtime owner는 `RomFS\Message\msgsec09.dat` **M09-D016 / mixed header word[17] BYTE=0x0217**이다. fixed span은 `0x0217..0x022A` 20B, separator는 `0x022B..0x022D`, 다음 direct는 `word[18]=0x022E`다.
+- 기존 `<NAME1>군 <NAME2>\n매복이었다`는 20/20B exact였다. 사용자 확정 **4안 `<NAME1>군 <NAME2>,매복이었다`**도 20/20B exact이며, 실제 binary 변경은 **`0x0220: 0A(LF) → 2C(,)` 단 1바이트**뿐이다. 나머지 19B는 byte-exact다.
+- msgsec09 88-word mixed header 전체, word[17]/word[18], 모든 `05 05 05` separator 위치, 2845B file size를 보존했다. parent-WORD prefix 41개의 target-span 내부 landing은 0건이며 pointer relocation/repack/file growth는 없다.
+- 한 줄 길이는 프로젝트의 15 전각-unit 정적 규칙으로 검토했다. 군주 3자 + `군` + 반각 공백 + 장수 4자 + 반각 쉼표 + `매복이었다` 5자 = **14.0/15.0 units**로 1.0 unit 여유다. Citra 실제 렌더 확인은 pending이다.
+- v251 대비 변경 게임 파일은 **`RomFS/Message/msgsec09.dat` 1개뿐**, 최종 SHA-256=`63CE1A0F5BC296003AAD1848799DB6603AD9B4DFFA07400AD2C639FF94F8E377`. code/font/PNG/G1T와 나머지 83파일은 v251 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` 모두 PASS. common dialogue review는 **v252 authority / 2280행 PASS**, battle review도 **v252 authority / 520행 PASS**로 재생성·독립 검증했다. 게임 이미지 편집/생성은 사용하지 않았다.
+- 권위 자료: `analysis\v252_issue224_ambush_one_line_targets.json`, `analysis\v252_issue224_ambush_one_line_report.json`, `tools\build_sangokushi2_v252_issue224_ambush_one_line.py`, `tools\verify_sangokushi2_v252_issue224_ambush_one_line.py`.
+
+### 2026-09-14 v251-intermediate — Issue #226 원군 요청 문구 개선
+
+- exact v250 Patch 84파일을 `analysis\v251_issue226_reinforcement_request_baseline\PatchSnapshot`에 봉인하고 `RomFS\Message\msgsec07.dat`의 실제 owner **M07-B208 / word[330] BYTE=0x2DD4**만 수정했다. fixed span은 `0x2DD4..0x2E04` 49B, separator `0x2E05..0x2E07`, 다음 pointer `word[331]=0x2E08`이다.
+- 기존 `<NAME1> 님, <NAME2>에게서 %s\n로의 원군 요청이 왔습니다`를 사용자 개선안 **`<NAME1>님, <NAME2>군이 %s에\n원군을 요청해 왔습니다`**로 교체했다. visible target 42B + tail padding 7B로 49B fixed span을 유지했다.
+- 최초 static build에서 stale alias `해=88E7`이 stock `育`으로 readback되는 것을 common review가 잡았다. current 안전 실사용 M08-B096의 `요청해` raw를 대조해 **`해=8B6C`**가 현 권위임을 확인하고 최종 v251을 재빌드했다. stale/generic encoder보다 current runtime readback을 우선한다.
+- 388-word header, word[330]/[331], separator topology, file size, NAME1/NAME2/%s/LF token을 보존했고 BYTE-inside/legacy WORD-parent landing은 0건이다. v250 대비 변경 게임 파일은 `RomFS/Message/msgsec07.dat` 1개뿐이며 SHA-256=`D76274E18310AE626D6BF27C16DDDF6C4A30B73FD87FC915DAC4D761BBFCF87C`다.
+- builder → 독립 verifier → deterministic `--check` PASS, common dialogue review도 v251 authority 2280행 PASS. Citra 확인은 pending이다. 권위 자료: `analysis\v251_issue226_reinforcement_request_targets.json`, `analysis\v251_issue226_reinforcement_request_report.json`, `tools\build_sangokushi2_v251_issue226_reinforcement_request.py`, `tools\verify_sangokushi2_v251_issue226_reinforcement_request.py`.
+
+### 2026-09-14 v250-intermediate — Issue #222 / #225 대사 개선
+
+- exact v249 Patch 84파일을 기준으로 #222와 #225의 실제 runtime owner를 다시 확정한 뒤 fixed-capacity 안에서만 수정했다. v249 대비 변경 게임 파일은 정확히 **`ExeFS/code.bin`, `RomFS/Message/msgsec04.dat`, `RomFS/Message/msgsec06.dat` 3개**다.
+- **#222:** 최종 문구는 **`<NAME1>은/는 <NAME2>님에게\n항복했습니다`**. 사용자 1안의 `두려워` 포함 문구는 local code data block 32B에 대해 33B라 1B 초과하여 배제했고, 용량 내 2안을 적용했다. 관련 #135 계승 code route 구조는 유지했다.
+- **#225:** actual owner는 `msgsec04 direct20 / word[20] BYTE=0x0365`, fixed span 40B다. `함정을 파두면\n적은 저절로 줄어들 것입니다`는 41B라 배제하고, **`함정을 파두면\n적은 자멸할 것입니다`** 34B + padding 6B를 적용했다.
+- 최종 SHA-256은 `code.bin=4B7FE99F166795369AB45E6CC63023AF6C247E68D4E97B1D044C0B56F12021C6`, `msgsec04.dat=BC8BB5F4B2B19B15D9542D4D016F141CFBC98797C0CA0B5E59D32D82E69FE9AF`, `msgsec06.dat=F21AA9D96FA67E61CFF957EEEBAC80A0054805A3BD170DA5FF9F7E504758D68C`다. 나머지 Patch 파일은 v249 byte-exact다.
+- 독립 verifier `tools\verify_sangokushi2_v250_issue222_225_text_cleanup.py` PASS, report=`analysis\v250_issue222_225_text_cleanup_report.json`. Citra 확인은 pending이다.
+
+### 2026-09-14 v249-intermediate — `title_up_002.png` 이미지 미세 조정 재삽입
+
+- 작업 전 네 필수 MD와 `analysis\v248_issue223_spacing_report.json`을 확인하여 **v248-intermediate / Patch 84파일**을 최신 권위로 확정했다.
+- exact v248 전체 Patch를 `analysis\v249_title_up_002_image_update_baseline\PatchSnapshot`에 봉인한 뒤 작업했으며 Original이나 과거 revision에서 다시 시작하지 않았다.
+- 사용자가 명시한 `Extracted_Image\RomFS\StartMenu\title_up\title_up_002.png` 1개만 열었다. 입력은 64×16 RGBA, SHA-256=`113831FD024D550DBC7F8EDE121FA500D61CA3776E6ADFE7ED3E2429B238E690`이다.
+- `RomFS\StartMenu\title_up.g1t`의 texture index 2(type `0x09` RGBA8, 4096B payload)만 1:1 교체했다. 공식 v1.1 3-texture 구조, G1T header와 index 0/1 payload는 v248과 byte-exact다.
+- 최종 `title_up.g1t` SHA-256=`4DBA69202B1CC028610E3DDFCCB1CC7EBADAE2910BFCA7FE657EF32273B6D364`. v248 대비 변경 게임 파일은 이 컨테이너 1개뿐이며 code/font/Message/Scenario와 나머지 83파일은 byte-exact다.
+- target decode readback이 입력 PNG와 pixel-exact임을 확인했다. builder, 독립 verifier, deterministic `--check`, 재검증이 모두 PASS했다. 이미지 생성은 사용하지 않았다.
+- `Sangokushi 2 Rebuild`, `0004000000174D00`, `Dummy update`, `Backup`, 배포/패키징 영역은 수정하지 않았다. Citra 실화면 확인은 pending이다.
+- 권위 자료: `analysis\v249_title_up_002_image_update_targets.json`, `analysis\v249_title_up_002_image_update_report.json`, `tools\build_sangokushi2_v249_title_up_002_image.py`, `tools\verify_sangokushi2_v249_title_up_002_image.py`.
+
+### 2026-09-14 v248-intermediate — Issue #223 물자 도착 문구 띄어쓰기 개선
+
+- 로컬 `Github_Issue\Issue223.html` 요청은 `OO 님, XX에서 물자가 / YY 에 도착했습니다`에서 군주 이름 뒤 `님` 앞 공백과 도시명 뒤 조사 `에` 앞 공백을 제거하는 것이다.
+- current v247 common review/runtime에서 actual owner를 `RomFS/Message/msgsec07.dat` **M07-B234 / header word[371] BYTE=0x3378**로 확정했다. fixed span은 `0x3378..0x33A0` 41B, separator는 `0x33A1..0x33A3`이다.
+- 기존 raw는 `0201C82089A32C20257388BA894E2089AF88F188E10A25732088BA2088DF8FA989D689A888AB88AC20`; 여기서 `<NAME1>` 뒤와 둘째 줄 `%s` 뒤의 ASCII space 두 개만 제거했다.
+- 최종 문구는 **`<NAME1>님, %s에서 물자가\n%s에 도착했습니다`**다. visible payload는 38B이고 남는 3B를 tail space padding으로 넣어 41B span을 그대로 유지한다.
+- msgsec07 388-word header 전체, `word[371]=0x3378`, 모든 `05 05 05` separator 위치와 60406B file size를 보존했다. target span 내부 BYTE header landing=0, legacy parent-WORD prefix 177개의 `*2` landing=0을 확인했으므로 pointer relocation/repack/dual-use 경계 변경이 없다.
+- v247 대비 변경 게임 파일은 **`RomFS/Message/msgsec07.dat` 1개뿐**, 최종 SHA-256=`9ECC9E6F73254DDA02B85BA5D0213014270F17FDF2BCC87CE219A5FA34A133B8`. code/font/PNG/G1T와 나머지 83파일은 v247 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. common dialogue review는 v248 authority **2280행 PASS**, battle review는 **520행 PASS**이며 M07-B234가 `<NAME1>님, %s에서 물자가 / %s에 도착했습니다`로 읽힌다. Citra 실화면 확인은 pending이다. 권위 자료: `analysis\v248_issue223_spacing_targets.json`, `analysis\v248_issue223_spacing_report.json`, `tools\build_sangokushi2_v248_issue223_spacing.py`, `tools\verify_sangokushi2_v248_issue223_spacing.py`.
+
+### 2026-09-14 v247-intermediate — Issue #221 군주 계승 문구 쉼표/축약
+
+- 로컬 `Github_Issue\Issue221.html`의 요청은 현재 `<NAME1> 뜻을 이어 / 군주가 되었다`에서 이름 뒤 쉼표를 넣고, 길이 보전을 위해 1안 `<NAME1>, 뜻을 이어 / 군주가 됐다` 또는 `됐` 글리프가 없으면 2안 `되다`를 쓰는 것이었다.
+- current v246 review/runtime 전수에서 실제 owner는 `RomFS/Message/msgsec09.dat` **M09-D028 / word[29] BYTE=0x0359**로 확정했다. fixed span은 `0x0359..0x0375` 29B, separator는 `0x0376..0x0378`, 다음 direct `word[30]=0x0379`다.
+- current safe mapping에 `됐=89A7`이 이미 존재하고 known-failed alias inventory에도 포함되지 않으므로 신규 glyph/font donor는 필요하지 않았다. 따라서 사용자 **1안**을 채택했다.
+- 기존 visible payload `<NAME1> 뜻을 이어\n군주가 되었다`는 27B+padding2, 신규 `<NAME1>, 뜻을 이어\n군주가 됐다`는 **26B+padding3**으로 오히려 1B 줄어든다. 29B span 전체 길이는 그대로 유지한다.
+- msgsec09 mixed header 88 words를 보존하고 parent-WORD prefix 41개를 전수 검사한 결과 target span 안으로 착지하는 WORD parent는 **0건**이었다. 따라서 pointer relocation/repack 없이 span 내부 payload만 교체했고 모든 `05 05 05` separator 위치와 2845B file size를 유지했다.
+- v246 대비 변경 게임 파일은 **`RomFS/Message/msgsec09.dat` 1개뿐**, 최종 SHA-256=`531580C7A67AC1F3B3CB1188D21EFC9E35F39530A7C4402F60A6EDFBA1713F20`. code/font/PNG/G1T 및 나머지 83파일은 v246 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. common dialogue review는 v247 authority 2280행 PASS, battle review는 520행 PASS이며 M09-D028가 정확히 `<NAME1>, 뜻을 이어 / 군주가 됐다`로 읽힌다. Citra 실화면 확인은 pending이다. 권위 자료: `analysis\v247_issue221_ruler_succession_targets.json`, `analysis\v247_issue221_ruler_succession_report.json`, `tools\build_sangokushi2_v247_issue221_ruler_succession_text.py`, `tools\verify_sangokushi2_v247_issue221_ruler_succession_text.py`.
+
+### 2026-09-14 v246-intermediate — Issue #220 장수 자연사 `武将` 혼입 + 조사 문구 개선
+
+- 로컬 `Github_Issue\Issue220.html`과 첨부 스크린샷 증거를 확인했다. 실화면 `OO님, XX의 武将 / YY(이)가 사망`은 `common_dialogue_review_v180.html`의 stale M08-B048이 아니라 **`code.bin` 자연사 조립 경로**가 actual owner였다.
+- current v245 official-update layout에서 local pool은 `0x15DC10=武将`, `0x15DC18=태수`, formatter C055 `0x15DC20=%s%s의 %s\n%s(이)가 사망`이다. ARM ADR 전수에서 각각 `0x15DA9C/0x15DAA0/0x15DAB0` 단 1개씩만 참조해 같은 자연사 함수 전용임을 확인했다.
+- `武将`/`태수`는 각각 8B slot에 4B+NUL로 있던 것을 **` 무장` / ` 태수`** 5B+NUL로 바꿨다. 다른 UI 공유 ref가 없어 label 쪽으로 선행 공백을 이동해도 부작용이 없다.
+- C055는 사용자 승인 최종안 **`%s%s의%s\n%s, 사망했습니다`**를 정확히 **25/25B exact-fit**으로 적용했다. 기존 allocation 안 NUL, 뒤 zero guard 2B, `0x15DC3C`의 `FF FF` sentinel과 ADR/caller/code size를 모두 보존했다. relocation/file growth 없음.
+- msgsec08 자연사 계열을 전수 확인한 결과 old **M08-B048 `0x8C4`는 BYTE/WORD header ref 0의 stale physical copy**라 byte-exact 보존했다. 실제 active rows는 M08-B169/B170/B171이며 각각 `<NAME1>, 사망했습니다`, `%s의 태수\n <NAME1>, 사망했습니다`, `%s의 무장 <NAME1>, 사망했습니다`로 고쳤다.
+- active rows는 기존 fixed span **25/36/35B**를 그대로 쓰고 줄어든 `(이)가` 5B만큼 각각 6B tail space padding으로 맞췄다. msgsec08 128-word header, BYTE pointers `43=0x1E63`, `44=0x1E7F`, `45=0x1EA6`, separator와 8046B file size는 그대로다. 특히 B171의 dual-use `word[84]*2=0x1EC6`은 마지막 space에 그대로 착지하며 그 byte부터 EOF까지 v245와 byte-exact다.
+- v245 대비 변경 게임 파일은 정확히 **`ExeFS/code.bin`, `RomFS/Message/msgsec08.dat` 2개**다. SHA-256=`code FBEBE5BE231FCD58EC1677062C0B35B4136C67CF2D43CA3FF2A4CEE192A27D78`, `msg08 56A52D986E849449D1A4E833473D46045FAB1047D00783F7D2696BD637668CEA`. font/PNG/G1T와 나머지 82파일은 v245 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → verifier 재실행 모두 PASS. common dialogue review는 v246 authority **2280행 PASS**, battle review는 **520행 PASS**. Citra 실화면 재확인은 pending이다. 권위 자료: `analysis\v246_issue220_natural_death_text_targets.json`, `analysis\v246_issue220_natural_death_text_report.json`, `tools\build_sangokushi2_v246_issue220_natural_death_text.py`, `tools\verify_sangokushi2_v246_issue220_natural_death_text.py`.
+
 ### 2026-09-14 v245-intermediate — M02-032 `슨` Citra 실패 alias 교체
 
 - 사용자 제보의 `battle_text_review_v180.html` M02-032 `대체 무슨 일인가 / 이래서는 움직일 수 없다`를 current v244 `msgsec02.dat`와 직접 대조했다. direct32 pointer는 `0x129B`, 40B span이며 `무슨`의 `슨`이 실제로 **`9972`**를 사용하고 있었다.
