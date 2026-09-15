@@ -12,6 +12,17 @@
 
 ## 완료한 작업
 
+### 2026-09-16 v260-intermediate — `HexFontEffect_021.png` 단일 이미지 갱신
+
+- 네 필수 MD와 `analysis\v259_image_update_report.json`을 확인해 v259-intermediate / Patch 84파일을 최신 권위로 확정하고, 전체를 `analysis\v260_hexfonteffect_021_image_update_baseline\PatchSnapshot`에 봉인한 뒤 작업했다.
+- 사용자가 명시한 `HexFontEffect_021.png` 1개만 열었다. 입력은 256×64 RGBA, SHA-256=`4C8929A7324800614726C244CC02E7604AB770BD0BC35CFC932F2A7A59D755C6`이다.
+- `RomFS\Hex\UI\HexFontEffect.g1t`의 texture index 21(type 0x09 RGBA8, 65536B payload)만 1:1 교체했다.
+- v130 이후 확정된 Hex 방향 규칙대로 정상 편집 PNG를 추가 상하반전·회전 없이 표준 RGBA8 encoder에 직접 입력했다. 완성 G1T의 readback은 원 PNG와 pixel-exact이며, 알려진 실패형 `FLIP_TOP_BOTTOM(PNG)`와는 불일치한다.
+- 32-texture 구조, G1T header와 비대상 31 payload는 v259 byte-exact다. v259 대비 변경 게임 파일은 이 G1T 1개뿐이며 최종 SHA-256=`9F707B770549BFD000E0BDC1832049FA20C7DE7ADA6ADD39C569D02778304DC5`; code/font/Message/Scenario/title 이미지와 나머지 83파일은 v259 byte-exact다.
+- builder, 독립 verifier, deterministic `--check`, 재검증이 모두 PASS했다. 이미지 생성은 사용하지 않았고 Citra 실화면 확인은 pending이다.
+- Rebuild·`0004000000174D00`·Dummy update·Backup·배포/패키징 영역은 수정하지 않았다.
+- 권위 자료: `analysis\v260_hexfonteffect_021_image_update_targets.json`, `analysis\v260_hexfonteffect_021_image_update_report.json`, `tools\build_sangokushi2_v260_hexfonteffect_021_image.py`, `tools\verify_sangokushi2_v260_hexfonteffect_021_image.py`.
+
 ### 2026-09-16 v259-intermediate — `title_up_002.png` + `ktlogo_000.png` 이미지 갱신
 
 - 네 필수 MD와 `analysis\v258_issue233_234_tutorial_label_cleanup_report.json`을 확인해 v258-intermediate / Patch 84파일을 최신 권위로 확정하고, 전체를 `analysis\v259_image_update_baseline\PatchSnapshot`에 봉인한 뒤 작업했다.
