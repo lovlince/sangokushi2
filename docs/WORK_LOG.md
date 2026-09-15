@@ -1,6 +1,6 @@
 # 삼국지 2 3DS 한글 패치 작업 기록
 
-마지막 갱신: 2026-09-15
+마지막 갱신: 2026-09-16
 
 ## 작업 규칙
 
@@ -11,6 +11,40 @@
 - 번역자는 제어 코드·서식·원시 바이트를 건드리지 않는다. 에이전트가 보존·복원·삽입·검증을 맡는다.
 
 ## 완료한 작업
+
+### 2026-09-16 v259-intermediate — `title_up_002.png` + `ktlogo_000.png` 이미지 갱신
+
+- 네 필수 MD와 `analysis\v258_issue233_234_tutorial_label_cleanup_report.json`을 확인해 v258-intermediate / Patch 84파일을 최신 권위로 확정하고, 전체를 `analysis\v259_image_update_baseline\PatchSnapshot`에 봉인한 뒤 작업했다.
+- 명시된 PNG 두 개만 열었다: `ktlogo_000.png`는 512×256 RGBA / SHA-256=`9262A34CF7AA30E99507AE65644919B947807683C21D48B385467BD205282DC7`, `title_up_002.png`는 64×16 RGBA / SHA-256=`8B9965BBF8AC403E3762B93E2677F8BDA7DE04C99137BE1D2037CB16757F7B08`다.
+- `RomFS\Opening\ktlogo.g1t` index 0과 `RomFS\StartMenu\title_up.g1t` index 2의 type 0x09 RGBA8 payload만 1:1 교체했다. 두 decode readback은 입력 PNG와 pixel-exact다.
+- G1T header와 모든 비대상 payload, `ktlogo` index 1, 공식 v1.1 `title_up` index 0/1 및 3-texture 엔트리 구조는 v258 byte-exact다.
+- v258 대비 변경 게임 파일은 두 G1T뿐이다. 최종 SHA-256은 `ktlogo.g1t=699F0F311853C7A83F0595837F6CEE324EA95C18D8057D7ECE23A138C2A5EEF6`, `title_up.g1t=88B0B08BE80B1E466FA53C5A9E719AD03945964ECDBA322E6B8D5B4DE1F58487`; code/font/Message/Scenario와 나머지 82파일은 v258 byte-exact다.
+- builder, 독립 verifier, deterministic `--check`, 재검증이 모두 PASS했다. 이미지 생성은 사용하지 않았고 Citra 실화면 확인은 pending이다.
+- Rebuild·`0004000000174D00`·Dummy update·Backup·배포/패키징 영역은 수정하지 않았다.
+- 권위 자료: `analysis\v259_image_update_targets.json`, `analysis\v259_image_update_report.json`, `tools\build_sangokushi2_v259_image_update.py`, `tools\verify_sangokushi2_v259_image_update.py`.
+
+### 2026-09-15 v258-intermediate — Issue #233/#234 튜토리얼 전투기술 명칭 정리
+
+- 로컬 `Github_Issue\Issue233.html`, `Issue234.html`과 assets를 확인하고 사용자 후속 지시를 최종 권위로 적용했다. #233은 **`단기진 → 돌진`만 수정**하며 `반사`와 다른 제안은 그대로 보존한다. #234는 튜토리얼 계열의 기술명 **`성벽넘기 → 벽넘기`**로 통일하고 실제 전투 버튼 `벽넘기`는 손대지 않는다.
+- #233 actual short label은 `RomFS\Message\msgsec15.dat 0x5F2`, 7B span의 `단기진` 6B + pad1이다. 최신 `돌진`은 4B라 같은 7B span에서 pad3으로 줄였고 `0x5F9..0x5FB=05 05 05` separator를 보존했다. `반사` `0x5E9`와 long `code.bin 0x1CEF88=단기돌진`은 byte-exact다.
+- #234 exact `성벽넘기` runtime copy는 current v257에서 총 4곳이었다: `code.bin 0x1D3A10`, `msgsec15 0x5A5`, `0x607`, M15-138 내부 `0x1255`. 모두 `벽넘기`로 축약했다. `code.bin 0x1D3A10`은 9B allocation 안에서 `벽넘기` 6B + NUL/pad로 처리하며 pointer `0x1E62E4→0x002D3A10`은 그대로다. substring `0x002D3A12` pointer ref는 0건이다.
+- `msgsec15 0x607`은 과거 `성벽넘기`를 위해 separator 1B를 빌린 8B+`05 05` 구조였으나, `벽넘기` 6B+pad1로 줄면서 **원래 `05 05 05` separator를 복원**했고 다음 record `0x611` 시작은 그대로다. M15-138 direct138 `0x123B..0x12AB` 113B는 `성벽넘기에 필요한`만 `벽넘기에 필요한`으로 줄여 tail padding 4→6B로 늘렸으며, 자연어 설명 `성벽까지 넘게 해주는 명마`는 그대로 유지했다.
+- 실제 전투 compact 버튼 `code.bin 0x1CEFD4=벽넘기`와 pointer `0x1DBE8C/0x1DC1F4→0x002CEFD4`는 v257 byte-exact다. relocation/file growth/font/PNG/G1T/Scenario/다른 Message 수정 없음.
+- exact v257 Patch 84파일을 `analysis\v258_issue233_234_tutorial_label_cleanup_baseline\PatchSnapshot`에 봉인했다. v257 대비 game diff는 **`ExeFS/code.bin`, `RomFS/Message/msgsec15.dat` 2개뿐**이며 SHA-256=`code 204DE93DF01192D92ED5F80476FD00DA3F2DB6825B167ED5967F9CDAAD00F639`, `msgsec15 28C112FA03C75AA09730B45C3D1D139414E2D11C82777966135E69166EB083EE`; 나머지 82파일은 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → 독립 verifier PASS. battle text review도 **v258 authority / 520행 PASS**로 재생성·검증했다. Citra 실화면 확인은 pending이다.
+- 권위 자료: `analysis\v258_issue233_234_tutorial_label_cleanup_targets.json`, `analysis\v258_issue233_234_tutorial_label_cleanup_report.json`, `tools\build_sangokushi2_v258_issue233_234_tutorial_label_cleanup.py`, `tools\verify_sangokushi2_v258_issue233_234_tutorial_label_cleanup.py`.
+
+### 2026-09-15 v257-intermediate — Issue #232 특산 아이템 효과 5종 한글화
+
+- 로컬 `Github_Issue\Issue232.html`과 assets 2장을 확인했다. 제보는 육도의 `知力+30 / 野望=0`, 수전의 `勇猛+5` 미번역이었고, 같은 특산 아이템 effect route를 전수 감사해 **신도 `陸指+%d`, 태현생부 `寿命=%dランク`, 오령수의 혼 `戦争中に使用すると…`**까지 추가 잔존 3종을 확인했다.
+- actual owner는 `msgsec14.dat` 아이템 설명문이 아니라 `ExeFS\code.bin`의 특산 아이템 전용 effect formatter다. 목록/상세용으로 동일 논리 효과가 두 풀에 복제되어 있어 5종 × 2 = **10개 C-string**이 실제 수정 대상이다.
+- 최신 표기는 **육도 `지력+%d 야망=%d` / 상세 `지력+%d\n야망=%d`**, **수전 `용맹+%d`**, **신도 `육지+%d`**, **태현생부 `수명=%d단계`**, **오령수의 혼 `전쟁 중에 사용하면…`**다. 주요 offsets는 list `0x1436C4/0x1436D4/0x1436DC/0x1436E4/0x143700`, detail `0x1967E4/0x1967F4/0x1967FC/0x196804/0x196820`이다.
+- 육도/수전/신도/오령수의 혼은 원 visible length와 exact-fit이며 태현생부는 13B→11B로 줄이고 동일 C-string allocation 안에 NUL/padding을 유지했다. pointer relocation, code growth, 신규 glyph는 없다.
+- `RomFS\Scenario\fix_data.bin`의 아이템 record를 별도로 확인해 육도/수전/신도/태현생부/오령수의 혼이 각각 effect ID **45/47/55/56/58**을 사용함을 검증했다. 이 파일은 수정하지 않았다.
+- exact v256 Patch 84파일을 `analysis\v257_issue232_special_item_effects_baseline\PatchSnapshot`에 봉인했다. v256 대비 game diff는 **`ExeFS/code.bin` 1개뿐**이고 최종 SHA-256=`BCF23935EA7B2804D979160861C00761748251D8ACD353D4D14F4CD7BB4695D2`; 비-code 83파일은 v256 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` → 독립 verifier가 모두 PASS했다. Issue #232에서 확인한 exact 일본어 effect pattern 잔존은 0건이다. 이후 사용자가 Citra 실화면 확인 완료를 보고해 **runtime PASS**로 승격했다. 확인 기록=`analysis\v257_issue232_citra_runtime_confirmation.json`.
+- PNG/G1T/font/Message/Scenario와 Rebuild·`0004000000174D00`·Dummy update·Backup·배포/패키징 영역은 수정하지 않았다.
+- 권위 자료: `analysis\v257_issue232_special_item_effects_targets.json`, `analysis\v257_issue232_special_item_effects_report.json`, `tools\build_sangokushi2_v257_issue232_special_item_effects.py`, `tools\verify_sangokushi2_v257_issue232_special_item_effects.py`.
 
 ### 2026-09-15 v256-intermediate — `title_up_002.png` + `ktlogo_000.png` 이미지 갱신
 
