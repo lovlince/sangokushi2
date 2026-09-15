@@ -1,6 +1,6 @@
 # 삼국지 2 3DS 한글 패치 작업 기록
 
-마지막 갱신: 2026-09-14
+마지막 갱신: 2026-09-15
 
 ## 작업 규칙
 
@@ -11,6 +11,48 @@
 - 번역자는 제어 코드·서식·원시 바이트를 건드리지 않는다. 에이전트가 보존·복원·삽입·검증을 맡는다.
 
 ## 완료한 작업
+
+### 2026-09-15 v256-intermediate — `title_up_002.png` + `ktlogo_000.png` 이미지 갱신
+
+- 네 필수 MD와 `analysis\v255_issue230_231_xian_dialogue_report.json`을 확인해 v255-intermediate / Patch 84파일을 최신 권위로 확정하고, 전체를 `analysis\v256_image_update_baseline\PatchSnapshot`에 봉인한 뒤 작업했다.
+- 명시된 PNG 두 개만 열었다: `ktlogo_000.png`는 512×256 RGBA / SHA-256=`BFC2B90EE9748FFF94AC336A9A2915700388DB32817AA307092D521E85F48AEB`, `title_up_002.png`는 64×16 RGBA / SHA-256=`A9EED1DFF7F7F0DCDEE9954FF8516EF6DD073A43B5D0298F90AE11D9513D4A1D`다.
+- `RomFS\Opening\ktlogo.g1t` index 0과 `RomFS\StartMenu\title_up.g1t` index 2의 type 0x09 RGBA8 payload만 1:1 교체했다. 각 decode readback은 입력 PNG와 pixel-exact다.
+- G1T header와 모든 비대상 payload는 v255 byte-exact다. `ktlogo` index 1, 공식 v1.1 `title_up` index 0/1 및 3-texture 엔트리 구조도 보존했다.
+- v255 대비 변경 게임 파일은 두 G1T뿐이다. 최종 SHA-256은 `ktlogo.g1t=4B3C049C4AC5E0E9EACA73096E5F289AA92F24238DE87B754EE5757533FAEA7C`, `title_up.g1t=251D4B56C91FAB8DDBAAC69EC32E8E55AA83F4ADC9062B9365D6CDC99773CBDE`; code/font/Message/Scenario와 나머지 82파일은 v255 byte-exact다.
+- builder, 독립 verifier, deterministic `--check`, 재검증이 모두 PASS했다. 이미지 생성은 사용하지 않았고 Citra 실화면 확인은 pending이다.
+- Rebuild·`0004000000174D00`·Dummy update·Backup·배포/패키징 영역은 수정하지 않았다.
+- 권위 자료: `analysis\v256_image_update_targets.json`, `analysis\v256_image_update_report.json`, `tools\build_sangokushi2_v256_image_update.py`, `tools\verify_sangokushi2_v256_image_update.py`.
+
+### 2026-09-15 v255-intermediate — Issue #230/#231 선인 대사 개선
+
+- 로컬 `Github_Issue\Issue230.html`, `Issue231.html`과 각 assets를 확인했다. 두 건 모두 자허상인/선인 23-pointer fragment table의 동적 무장명 + suffix 조립형이다. 이미지 자체는 수정하지 않았다.
+- #230 actual owner는 **C347 / current `code.bin 0x1D2DEC`**, table word[3] `0x1E5DE8=0x002D2DEC`다. 이 suffix는 다음 live #228 helper `0x1D2E08="에게서 "` 직전까지 `0x1D2DEC..0x1D2E07` **28B allocation**이다. 사용자 확정 **`님의 명운,\n이제 다할 때가..`**는 27B visible + NUL = 28/28B exact-fit이다.
+- #231 actual owner는 **C363 / current `code.bin 0x1D2FDC`**, table word[2] `0x1E5DE4=0x002D2FDC`다. 다음 live `각지` 문자열이 `0x1D2FF8`에서 시작하므로 `0x1D2FDC..0x1D2FF7` 역시 정확히 28B allocation이다. 사용자 확정 **`님께 죽을 상이..\n애석하오..`**는 27B visible + NUL = 28/28B exact-fit이다.
+- 초기 재개 검증에서 과거 `audit.load_map()`의 보조값 `애=98B3`를 사용하면 common review current decoder가 한자 glyph로 해석하는 문제가 검출됐다. 이를 즉시 폐기하고 current v171+ effective map의 **`애=9078`**로 수정했다. `석=97E6`, `하=88C9`, `오=88AD`, `께=8DBC`는 current authority와 일치한다. font/G1T는 수정하지 않았다.
+- exact v254 Patch 84파일을 `analysis\v255_issue230_231_xian_dialogue_baseline\PatchSnapshot`에 봉인했다. v254 대비 실제 game diff는 **`ExeFS/code.bin` 1개뿐**이며 최종 SHA-256=`F843DA55D8B701BF1B0D773100508A974353EAD1889729BFB279D965DFA5BF8F`. 나머지 83파일은 v254 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` 모두 PASS. common dialogue review도 **v255 authority / 2280행 PASS**다. C347 review capacity는 과거 Original heuristic 33B 대신 실제 live helper 경계로 증명된 visible **27B**로 보정했고 C363도 27B exact-fit을 명시했다. Citra 실화면 확인은 pending이다.
+- 권위 자료: `analysis\v255_issue230_231_xian_dialogue_targets.json`, `analysis\v255_issue230_231_xian_dialogue_report.json`, `tools\build_sangokushi2_v255_issue230_231_xian_dialogue.py`, `tools\verify_sangokushi2_v255_issue230_231_xian_dialogue.py`.
+
+### 2026-09-15 v254-intermediate — Issue #228/#229 자허상인 조사 + 금 수입 띄어쓰기
+
+- 로컬 `Github_Issue\Issue228.html`, `Issue229.html`과 각 assets를 확인했다. #228 요청은 `좌자에게 둔갑천서3권을(를) / 구하시오`의 `에게→에게서`, #229는 `상업을 올려 금수입을 늘립니다.`의 `금 수입` 띄어쓰기다. 이미지 자체는 수정하지 않았다.
+- #228은 C362가 아니라 v123에서 이미 증명된 **자허상인 23-pointer 조립형 helper**가 owner다. current pointer table `code.bin 0x1E5DDC`의 word[12], word offset `0x1E5E0C`가 `0x002D2E08`을 가리키며 file offset `0x1D2E08`의 local helper는 `에게 `다. 다음 문자열은 `0x1D2E10`부터이므로 **`에게서 `+NUL = 8/8B exact-fit**이 가능하다. C362 current `0x1D2FCC="을(를)\n구하시오"`는 15/15B라 그대로 보존했다.
+- 따라서 #228 기대 조립은 **`좌자에게서 둔갑천서3권을(를)\n구하시오`**이며 같은 request connector를 쓰는 sibling도 자연스럽게 `장각에게서 태평요술서을(를)\n구하시오` 형태가 된다. global Japanese connectors와 pointer table 자체는 byte-exact다.
+- #229 owner는 과거 v21 분석과 current v253 바이트를 다시 대조해 `RomFS\Message\msgsec10.dat` **msgsec10_0017_000 / header word[17] WORD=0x043F → 0x087E**로 확정했다. span `0x087E..0x089F` 34B는 leading `05 05` + 본문 + tail padding 구조이며 기존 문구 뒤 padding space가 2B 있다.
+- **`상업을 올려 금 수입을 늘립니다.`**는 `금` 뒤 ASCII space 1B를 추가하고 tail padding을 2→1B로 줄여 같은 34B span에 수용했다. `word[17]`, 파일 크기 7237B, 모든 `05 05 05` separator 위치와 바로 뒤 `0x08A0..0x08A2` separator는 그대로다.
+- exact v253 Patch 84파일을 `analysis\v254_issue228_229_text_cleanup_baseline\PatchSnapshot`에 봉인했다. v253 대비 game diff는 **`ExeFS/code.bin`, `RomFS/Message/msgsec10.dat` 2개뿐**이다. 최종 SHA-256=`code E28774311F3A33CF21A9D13C5271A52DDAEEC23A4EB3526AEAD5C4C4EA28A990`, `msg10 62ABBF69F6BB6235CF3D3A170CAF5F7A4897E82F844F3A0A041C6E8165982ECB`.
+- builder → 독립 verifier → deterministic `--check` 모두 PASS. common dialogue review도 **v254 authority / 2280행 PASS**다. PNG/G1T/font, Original/Rebuild/Backup/Dummy update는 미수정이며 Citra 실화면 확인은 pending이다.
+- 권위 자료: `analysis\v254_issue228_229_text_cleanup_targets.json`, `analysis\v254_issue228_229_text_cleanup_report.json`, `tools\build_sangokushi2_v254_issue228_229_text_cleanup.py`, `tools\verify_sangokushi2_v254_issue228_229_text_cleanup.py`.
+
+### 2026-09-15 v253-intermediate — Issue #227 장수 불만 문구 개선
+
+- 로컬 `Github_Issue\Issue227.html`과 `Issue227_assets\81cb46bc-2b32-4dae-afe0-7d821c2fef51.png`(1068×765 RGB)를 확인했다. 요청은 `(도시)의(장수)는 / 불만을 품은 듯합니다`에서 도시-장수 사이 공백을 추가하고, 가능하면 장수 뒤를 `은/는`으로 처리하는 것이다. 이미지 편집은 수행하지 않았다.
+- `common_dialogue_review_v180`의 actual suffix owner는 **C040 / historical `code.bin 0x15A210` → official-update current `0x15A520`**이며 현재 `는\n불만을 품은 듯합니다` 23B, Original visible length 기준 25B였다.
+- caller를 직접 확인한 결과 runtime 조립은 `도시명 + local "의" + 동적 장수명 + C040 suffix`다. local `의`는 current `0x15A51C`, 4B 전용 슬롯이며 `의\0+pad`를 **`의 `+NUL**로 exact-fit할 수 있다. C040은 다음 ARM 함수 시작 `0x15A53C` 직전까지 `0x15A520..0x15A53B` **28B 독립 문자열 allocation**이 실제 경계다.
+- 따라서 사용자 1안 **`<CITY>의 <OFFICER>은/는\n불만을 품은 듯합니다`**를 적용했다. suffix는 26B visible + NUL + 1B zero guard로 28B에 들어가며 쉼표 fallback은 필요하지 않다. prefix ADR `0x15A4D8`, suffix ADR `0x15A4FC`, shared assembly buffer literal `0x15A518→0x002F3920`, concat 호출과 code size를 보존했다.
+- exact v252 Patch 84파일을 `analysis\v253_issue227_officer_discontent_baseline\PatchSnapshot`에 봉인했다. v252 대비 실제 game diff는 **`ExeFS/code.bin` 1개뿐**이며 최종 SHA-256=`5AFEDDA0CBEA4D4EC8491D3144117BC73893525B8322EEB0A70680D24905CFA7`. 비-code 83파일과 font/PNG/G1T는 v252 byte-exact다.
+- builder → 독립 verifier → deterministic `--check` 모두 PASS. common dialogue review generator는 C040의 보수적 Original-visible 25B 대신 이번에 증명된 **27B visible capacity(NUL 1B 예약)**를 사용하도록 보정했고, common review는 **v253 authority / 2280행 PASS**, C040=`은/는 / 불만을 품은 듯합니다`, 26/27B, 여유1B로 검증됐다. Citra 실화면 재확인은 pending이다.
+- 권위 자료: `analysis\v253_issue227_officer_discontent_targets.json`, `analysis\v253_issue227_officer_discontent_report.json`, `tools\build_sangokushi2_v253_issue227_officer_discontent.py`, `tools\verify_sangokushi2_v253_issue227_officer_discontent.py`.
 
 ### 2026-09-14 v252-intermediate — Issue #224 매복 문구 4안 한 줄 처리
 
